@@ -22,12 +22,12 @@ async fn test(
 pub struct ProvisioningRequest {
     pub quicknode_id: String,
     pub endpoint_id: String,
-    pub wss_url: Option<String>,
-    pub http_url: Option<String>,
-    pub referers: Option<Vec<String>>,
+    pub wss_url: String,
+    pub http_url: String,
+    pub referers: Vec<String>,
     pub chain: String,
     pub network: String,
-    pub plan: Option<String>,
+    pub plan: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -61,21 +61,6 @@ pub struct ProvisioniningUpdateResponse {
     status: ResponseStatus,
 }
 
-impl From<ProvisioningDeactivateRequest> for ProvisioningRequest {
-    fn from(value: ProvisioningDeactivateRequest) -> Self {
-        Self {
-            quicknode_id: value.quicknode_id,
-            endpoint_id: value.endpoint_id,
-            wss_url: None,
-            http_url: None,
-            referers: None,
-            chain: value.chain,
-            network: value.network,
-            plan: None,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct ProvisioningError(crate::Error);
 
@@ -91,11 +76,9 @@ impl ResponseError for ProvisioningError {
     }
 
     fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
-        let mut res = HttpResponse::build(self.status_code()).json(ProvisioniningUpdateResponse {
+        HttpResponse::build(self.status_code()).json(ProvisioniningUpdateResponse {
             status: ResponseStatus::Error,
-        });
-
-        res
+        })
     }
 }
 
@@ -139,8 +122,7 @@ async fn deactivate(
     db: web::Data<DbConnector>,
 ) -> Result<web::Json<ProvisioniningUpdateResponse>, ProvisioningError> {
     validate_basic_auth(basic_auth)?;
-    let deactivate_at = request.deactivate_at;
-    db.update_provisioning_request(&request.into_inner().into(), Some(deactivate_at))
+    db.update_expiry(&request.quicknode_id, request.deactivate_at)
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
         status: ResponseStatus::Success,

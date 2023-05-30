@@ -1,15 +1,15 @@
-use actix_web::{get, post, put, web, App, HttpResponse, HttpServer, Responder, ResponseError};
+use actix_web::{get, web, App, HttpServer, Responder};
 use actix_web_httpauth::extractors::basic::{self, BasicAuth};
 use base64::Engine;
 use config::CONFIG;
 use db::DbConnector;
 pub use error::{Error, ErrorType};
-use serde::{Deserialize, Serialize};
 
 pub mod config;
 pub mod db;
 pub mod error;
 pub mod provisioning;
+pub mod sns;
 
 #[get("/hello")]
 async fn greet(auth: BasicAuth) -> impl Responder {
@@ -40,6 +40,7 @@ pub async fn main() -> std::io::Result<()> {
             .service(greet)
             .service(health)
             .service(provisioning::scope())
+            .service(sns::scope())
     })
     .bind(("0.0.0.0", 8080))?
     .run()

@@ -87,6 +87,30 @@ impl DbConnector {
         Ok(())
     }
 
+    pub async fn update_expiry(
+        &self,
+        quicknode_id: &str,
+        expiry_timestamp: i64,
+    ) -> Result<(), crate::Error> {
+        let client = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| trace!(crate::ErrorType::DbError, e))?;
+        let s = client
+            .prepare_typed_cached(
+                include_str!("sql/update_expiry_timestamp.sql"),
+                &[Type::INT8, Type::TEXT],
+            )
+            .await
+            .map_err(|e| trace!(ErrorType::DbError, e))?;
+        client
+            .execute(&s, &[&expiry_timestamp, &quicknode_id])
+            .await
+            .map_err(|e| trace!(ErrorType::DbError, e))?;
+        Ok(())
+    }
+
     pub async fn update_provisioning_request(
         &self,
         request: &ProvisioningRequest,
