@@ -19,7 +19,8 @@ impl Params {
                 .to_owned();
             Ok(Self { domain })
         } else {
-            serde_json::from_value(value).map_err(|e| trace!(crate::ErrorType::InvalidParameters))
+            serde_json::from_value(value)
+                .map_err(|e| trace!(crate::ErrorType::InvalidParameters, e))
         }
     }
 }
