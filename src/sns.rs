@@ -11,21 +11,18 @@ use solana_client::nonblocking::rpc_client::RpcClient;
 
 use crate::{db::DbConnector, trace, ErrorType};
 
+pub mod get_domain_key;
 pub mod resolve_domain;
 
 pub fn scope() -> impl HttpServiceFactory {
     Scope::new("rpc").service(route)
 }
 
-pub enum Params<T> {
-    Positional(Vec<String>),
-    Named(T),
-}
-
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Method {
     Resolve,
+    GetDomainKey,
     #[serde(other)]
     Unsupported,
 }
@@ -145,13 +142,13 @@ pub async fn route(
         .map_err(|e| (id.clone(), e))?;
 
     let result = match method {
-        Method::Resolve => resolve_domain::run(rpc_client, params)
-            .await,
+        Method::Resolve => resolve_domain::process(rpc_client, params).await,
+        Method::GetDomainKey => get_domain_key::process(rpc_client, params).await,
         Method::Unsupported => {
             return Err((id.clone(), trace!(crate::ErrorType::UnsupportedEndpoint)).into())
         }
     }
-            .map_err(|e| (id.clone(), e))?;
+    .map_err(|e| (id.clone(), e))?;
     Ok(web::Json(RpcResponseOk {
         jsonrpc: JSON_RPC,
         result,

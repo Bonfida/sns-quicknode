@@ -1,7 +1,7 @@
 use crate::trace;
 use serde::Deserialize;
 use serde_json::Value;
-use sns_sdk::non_blocking::resolve;
+use sns_sdk::derivation::get_domain_key;
 use solana_client::nonblocking::rpc_client::RpcClient;
 
 #[derive(Deserialize)]
@@ -24,11 +24,10 @@ impl Params {
     }
 }
 
-pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
+pub async fn process(_rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
     let params = Params::deserialize(params)?;
-    let resolved = resolve::resolve_owner(&rpc_client, &params.domain)
-        .await
-        .map_err(|e| trace!(crate::ErrorType::Generic, e))?;
-    Ok(serde_json::to_value(resolved.to_string())
+    let domain_key = get_domain_key(&params.domain, false)
+        .map_err(|e| trace!(crate::ErrorType::InvalidDomain, e))?;
+    Ok(serde_json::to_value(domain_key.to_string())
         .map_err(|e| trace!(crate::ErrorType::Generic, e)))?
 }

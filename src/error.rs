@@ -18,6 +18,7 @@ pub enum ErrorType {
     UnsupportedMethod,
     MalformedRequest,
     InvalidParameters,
+    InvalidDomain,
 }
 
 #[derive(Debug)]
@@ -36,6 +37,7 @@ impl Display for Error {
             ErrorType::UnsupportedMethod => "Unsupported method",
             ErrorType::MalformedRequest => "Malformed Request",
             ErrorType::InvalidParameters => "Invalid Parameters",
+            ErrorType::InvalidDomain => "Invalid Domain",
             _ => "Internal error",
         };
         f.write_str(s)
@@ -49,7 +51,9 @@ impl ResponseError for Error {
                 StatusCode::UNAUTHORIZED
             }
             ErrorType::UnsupportedEndpoint => StatusCode::NOT_FOUND,
-            ErrorType::MalformedRequest | ErrorType::InvalidParameters => StatusCode::BAD_REQUEST,
+            ErrorType::MalformedRequest
+            | ErrorType::InvalidParameters
+            | ErrorType::InvalidDomain => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
