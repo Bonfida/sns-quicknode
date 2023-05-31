@@ -13,6 +13,7 @@ use crate::{db::DbConnector, trace, ErrorType};
 
 pub mod get_all_domains_for_owner;
 pub mod get_domain_key;
+pub mod get_domain_record_key;
 pub mod get_domain_reverse_key;
 pub mod resolve_domain;
 
@@ -27,6 +28,7 @@ pub enum Method {
     GetDomainKey,
     GetAllDomainsForOwner,
     GetDomainReverseKey,
+    GetDomainRecordKey,
     #[serde(other)]
     Unsupported,
 }
@@ -152,6 +154,7 @@ pub async fn route(
             get_all_domains_for_owner::process(rpc_client, params).await
         }
         Method::GetDomainReverseKey => get_domain_reverse_key::process(rpc_client, params).await,
+        Method::GetDomainRecordKey => get_domain_record_key::process(rpc_client, params).await,
         Method::Unsupported => {
             return Err((id.clone(), trace!(crate::ErrorType::UnsupportedEndpoint)).into())
         }

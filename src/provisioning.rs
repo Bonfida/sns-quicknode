@@ -1,11 +1,10 @@
-use std::{fmt::Display, str::FromStr};
+use std::fmt::Display;
 
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder, ResponseError, Scope};
 use actix_web_httpauth::extractors::basic::BasicAuth;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::{append_trace, db::DbConnector, trace, validate_basic_auth};
+use crate::{db::DbConnector, validate_basic_auth};
 
 #[get("/test/{quicknode_id}")]
 async fn test(
@@ -36,7 +35,8 @@ pub struct ProvisioningRequest {
 pub struct ProvisioningDeactivateRequest {
     pub quicknode_id: String,
     pub endpoint_id: String,
-    pub deactivate_at: String,
+    // pub deactivate_at: String,
+    pub deactivate_at: i64,
     pub chain: String,
     pub network: String,
 }
@@ -46,7 +46,8 @@ pub struct ProvisioningDeactivateRequest {
 pub struct DeprovisioningRequest {
     pub quicknode_id: String,
     pub endpoint_id: String,
-    pub deprovision_at: String,
+    // pub deprovision_at: String,
+    pub deprovision_at: i64,
 }
 
 #[derive(Serialize)]
@@ -142,7 +143,8 @@ async fn deactivate(
     //     serde_json::to_string_pretty(&request).map_err(|e| trace!(crate::ErrorType::Generic, e))?
     // );
     // return Err(ProvisioningError(trace!(crate::ErrorType::Generic)));
-    let deactivate_at = parse_timestamp(&request.deactivate_at).map_err(|e| append_trace!(e))?;
+    let deactivate_at = request.deactivate_at;
+    // let deactivate_at = parse_timestamp(&request.deactivate_at).map_err(|e| append_trace!(e))?;
     db.update_expiry(&request.quicknode_id, deactivate_at)
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
@@ -157,7 +159,8 @@ async fn deprovision(
     db: web::Data<DbConnector>,
 ) -> Result<web::Json<ProvisioniningUpdateResponse>, ProvisioningError> {
     validate_basic_auth(basic_auth)?;
-    let deprovision_at = parse_timestamp(&request.deprovision_at).map_err(|e| append_trace!(e))?;
+    let deprovision_at = request.deprovision_at;
+    // let deprovision_at = parse_timestamp(&request.deprovision_at).map_err(|e| append_trace!(e))?;
     db.update_expiry(&request.quicknode_id, deprovision_at)
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
@@ -174,15 +177,15 @@ pub fn scope() -> Scope {
         .service(deprovision)
 }
 
-pub fn parse_timestamp(timestamp: &str) -> Result<i64, crate::Error> {
-    let time = chrono::DateTime::<Utc>::from_str(timestamp)
-        .map_err(|e| trace!(crate::ErrorType::MalformedRequest, e))?;
-    Ok(time.timestamp())
-}
+// pub fn parse_timestamp(timestamp: &str) -> Result<i64, crate::Error> {
+//     let time = chrono::DateTime::<Utc>::from_str(timestamp)
+//         .map_err(|e| trace!(crate::ErrorType::MalformedRequest, e))?;
+//     Ok(time.timestamp())
+// }
 
-#[test]
-fn test_timestamp() {
-    let t = "2023-05-31T14:41:34+01:00";
-    let t = parse_timestamp(t).unwrap();
-    assert_eq!(t, 1685540494);
-}
+// #[test]
+// fn test_timestamp() {
+//     let t = "2023-05-31T14:41:34+01:00";
+//     let t = parse_timestamp(t).unwrap();
+//     assert_eq!(t, 1685540494);
+// }
