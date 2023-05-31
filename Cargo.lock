@@ -3119,8 +3119,9 @@ dependencies = [
 [[package]]
 name = "sns-sdk"
 version = "0.1.1"
-source = "git+ssh://git@github.com/Bonfida/sns-sdk.git#52f072956ed7c80292644066de293078c9ac655d"
+source = "git+ssh://git@github.com/Bonfida/sns-sdk.git?branch=extra-rust-methods#4d1ac7e13b19d554da91c0f6a2b2212abc3e5503"
 dependencies = [
+ "borsh",
  "derive_more",
  "ed25519-dalek",
  "hex",
@@ -3793,7 +3794,7 @@ dependencies = [
 [[package]]
 name = "spl-name-service"
 version = "0.2.0"
-source = "git+https://github.com/solana-labs/solana-program-library#c1aa748721dc84557851b1367a648f495a61c9bb"
+source = "git+https://github.com/solana-labs/solana-program-library#069c4b08f0874f4a76b7458c30f99ede22a3a314"
 dependencies = [
  "borsh",
  "num-derive",

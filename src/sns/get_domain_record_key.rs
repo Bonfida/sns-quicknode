@@ -31,8 +31,8 @@ impl Params {
 
 pub async fn process(_rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
     let params = Params::deserialize(params)?;
-    let domain_key = get_domain_key(&format!("{}.{}", params.record, params.domain), true)
+    let domain_record_key = get_domain_key(&format!("{}.{}", params.record, params.domain), true)
         .map_err(|e| trace!(crate::ErrorType::InvalidDomain, e))?;
-    Ok(serde_json::to_value(domain_key.to_string())
+    Ok(serde_json::to_value(domain_record_key.to_string())
         .map_err(|e| trace!(crate::ErrorType::Generic, e)))?
 }

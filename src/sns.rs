@@ -15,6 +15,7 @@ pub mod get_all_domains_for_owner;
 pub mod get_domain_key;
 pub mod get_domain_record_key;
 pub mod get_domain_reverse_key;
+pub mod get_favourite_domain;
 pub mod resolve_domain;
 
 pub fn scope() -> impl HttpServiceFactory {
@@ -29,6 +30,7 @@ pub enum Method {
     GetAllDomainsForOwner,
     GetDomainReverseKey,
     GetDomainRecordKey,
+    GetFavouriteDomain,
     #[serde(other)]
     Unsupported,
 }
@@ -155,6 +157,7 @@ pub async fn route(
         }
         Method::GetDomainReverseKey => get_domain_reverse_key::process(rpc_client, params).await,
         Method::GetDomainRecordKey => get_domain_record_key::process(rpc_client, params).await,
+        Method::GetFavouriteDomain => get_favourite_domain::process(rpc_client, params).await,
         Method::Unsupported => {
             return Err((id.clone(), trace!(crate::ErrorType::UnsupportedEndpoint)).into())
         }
