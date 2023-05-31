@@ -145,16 +145,13 @@ pub async fn route(
         .map_err(|e| (id.clone(), e))?;
 
     let result = match method {
-        Method::Resolve => resolve_domain::run(
-            rpc_client,
-            resolve_domain::Params::deserialize(params).map_err(|e| (id.clone(), e))?,
-        )
-        .await
-        .map_err(|e| (id.clone(), e))?,
+        Method::Resolve => resolve_domain::run(rpc_client, params)
+            .await,
         Method::Unsupported => {
             return Err((id.clone(), trace!(crate::ErrorType::UnsupportedEndpoint)).into())
         }
-    };
+    }
+            .map_err(|e| (id.clone(), e))?;
     Ok(web::Json(RpcResponseOk {
         jsonrpc: JSON_RPC,
         result,

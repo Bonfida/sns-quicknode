@@ -25,7 +25,8 @@ impl Params {
     }
 }
 
-pub async fn run(rpc_client: RpcClient, params: Params) -> Result<Value, crate::Error> {
+pub async fn run(rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
+    let params = Params::deserialize(params)?;
     let resolved = resolve::resolve_owner(&rpc_client, &params.domain)
         .await
         .map_err(|e| trace!(crate::ErrorType::Generic, e))?;
