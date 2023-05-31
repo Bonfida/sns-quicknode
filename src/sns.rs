@@ -16,6 +16,7 @@ pub mod get_domain_key;
 pub mod get_domain_record_key;
 pub mod get_domain_reverse_key;
 pub mod get_favourite_domain;
+pub mod get_subdomains;
 pub mod get_supported_records;
 pub mod resolve_domain;
 pub mod reverse_lookup;
@@ -35,6 +36,7 @@ pub enum Method {
     GetFavouriteDomain,
     GetSupportedRecords,
     ReverseLookup,
+    GetSubdomains,
     #[serde(other)]
     Unsupported,
 }
@@ -164,6 +166,7 @@ pub async fn route(
         Method::GetFavouriteDomain => get_favourite_domain::process(rpc_client, params).await,
         Method::GetSupportedRecords => get_supported_records::process(rpc_client, params).await,
         Method::ReverseLookup => reverse_lookup::process(rpc_client, params).await,
+        Method::GetSubdomains => get_subdomains::process(rpc_client, params).await,
         Method::Unsupported => {
             return Err((id.clone(), trace!(crate::ErrorType::UnsupportedEndpoint)).into())
         }
