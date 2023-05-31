@@ -19,6 +19,7 @@ pub enum ErrorType {
     MalformedRequest,
     InvalidParameters,
     InvalidDomain,
+    DomainNotFound
 }
 
 #[derive(Debug)]
