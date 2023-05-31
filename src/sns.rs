@@ -11,6 +11,7 @@ use solana_client::nonblocking::rpc_client::RpcClient;
 
 use crate::{db::DbConnector, trace, ErrorType};
 
+pub mod get_all_domains_for_owner;
 pub mod get_domain_key;
 pub mod resolve_domain;
 
@@ -23,6 +24,7 @@ pub fn scope() -> impl HttpServiceFactory {
 pub enum Method {
     Resolve,
     GetDomainKey,
+    GetAllDomainsForOwner,
     #[serde(other)]
     Unsupported,
 }
@@ -144,6 +146,7 @@ pub async fn route(
     let result = match method {
         Method::Resolve => resolve_domain::process(rpc_client, params).await,
         Method::GetDomainKey => get_domain_key::process(rpc_client, params).await,
+        Method::GetAllDomainsForOwner => get_all_domains_for_owner::process(rpc_client, params).await,
         Method::Unsupported => {
             return Err((id.clone(), trace!(crate::ErrorType::UnsupportedEndpoint)).into())
         }
