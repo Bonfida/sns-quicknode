@@ -5,6 +5,6 @@ UPDATE provisioning SET
     referers = $4,
     chain = $5,
     network = $6,
-    plan = $6,
-    expiry_timestamp = $7
-WHERE quicknode_id = $8
+    plan = $7,
+    expiry_timestamp = $8
+WHERE quicknode_id = $9

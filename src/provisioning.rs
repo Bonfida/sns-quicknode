@@ -1,10 +1,11 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder, ResponseError, Scope};
 use actix_web_httpauth::extractors::basic::BasicAuth;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::{db::DbConnector, validate_basic_auth};
+use crate::{append_trace, db::DbConnector, trace, validate_basic_auth};
 
 #[get("/test/{quicknode_id}")]
 async fn test(
@@ -35,9 +36,17 @@ pub struct ProvisioningRequest {
 pub struct ProvisioningDeactivateRequest {
     pub quicknode_id: String,
     pub endpoint_id: String,
-    pub deactivate_at: i64,
+    pub deactivate_at: String,
     pub chain: String,
     pub network: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DeprovisioningRequest {
+    pub quicknode_id: String,
+    pub endpoint_id: String,
+    pub deprovision_at: String,
 }
 
 #[derive(Serialize)]
@@ -76,6 +85,10 @@ impl ResponseError for ProvisioningError {
     }
 
     fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
+        let status_code = self.status_code();
+        if status_code.is_server_error() {
+            eprintln!("Server Error: {:#?}", self.0);
+        }
         HttpResponse::build(self.status_code()).json(ProvisioniningUpdateResponse {
             status: ResponseStatus::Error,
         })
@@ -88,7 +101,7 @@ impl From<crate::Error> for ProvisioningError {
     }
 }
 
-#[post("/new")]
+#[post("/provision")]
 async fn new(
     basic_auth: BasicAuth,
     request: web::Json<ProvisioningRequest>,
@@ -115,14 +128,37 @@ async fn update(
         status: ResponseStatus::Success,
     }))
 }
-#[delete("/deactivate")]
+
+#[delete("/deactivate_endpoint")]
 async fn deactivate(
     basic_auth: BasicAuth,
     request: web::Json<ProvisioningDeactivateRequest>,
+    // request: web::Json<Value>,
     db: web::Data<DbConnector>,
 ) -> Result<web::Json<ProvisioniningUpdateResponse>, ProvisioningError> {
     validate_basic_auth(basic_auth)?;
-    db.update_expiry(&request.quicknode_id, request.deactivate_at)
+    // println!(
+    //     "{}",
+    //     serde_json::to_string_pretty(&request).map_err(|e| trace!(crate::ErrorType::Generic, e))?
+    // );
+    // return Err(ProvisioningError(trace!(crate::ErrorType::Generic)));
+    let deactivate_at = parse_timestamp(&request.deactivate_at).map_err(|e| append_trace!(e))?;
+    db.update_expiry(&request.quicknode_id, deactivate_at)
+        .await?;
+    Ok(web::Json(ProvisioniningUpdateResponse {
+        status: ResponseStatus::Success,
+    }))
+}
+
+#[delete("/deprovision")]
+async fn deprovision(
+    basic_auth: BasicAuth,
+    request: web::Json<DeprovisioningRequest>,
+    db: web::Data<DbConnector>,
+) -> Result<web::Json<ProvisioniningUpdateResponse>, ProvisioningError> {
+    validate_basic_auth(basic_auth)?;
+    let deprovision_at = parse_timestamp(&request.deprovision_at).map_err(|e| append_trace!(e))?;
+    db.update_expiry(&request.quicknode_id, deprovision_at)
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
         status: ResponseStatus::Success,
@@ -131,8 +167,22 @@ async fn deactivate(
 
 pub fn scope() -> Scope {
     Scope::new("provisioning")
-        .service(update)
         .service(test)
         .service(new)
+        .service(update)
         .service(deactivate)
+        .service(deprovision)
+}
+
+pub fn parse_timestamp(timestamp: &str) -> Result<i64, crate::Error> {
+    let time = chrono::DateTime::<Utc>::from_str(timestamp)
+        .map_err(|e| trace!(crate::ErrorType::MalformedRequest, e))?;
+    Ok(time.timestamp())
+}
+
+#[test]
+fn test_timestamp() {
+    let t = "2023-05-31T14:41:34+01:00";
+    let t = parse_timestamp(t).unwrap();
+    assert_eq!(t, 1685540494);
 }

@@ -15,7 +15,9 @@ pub enum ErrorType {
     DbError,
     ProvisioningRecordNotFound,
     UnsupportedEndpoint,
+    UnsupportedMethod,
     MalformedRequest,
+    InvalidParameters,
 }
 
 #[derive(Debug)]
@@ -31,7 +33,9 @@ impl Display for Error {
             ErrorType::InvalidAuthentication => "Invalid Authentication",
             ErrorType::ProvisioningRecordNotFound => "User has not been provisioned",
             ErrorType::UnsupportedEndpoint => "Unsupported endpoint",
+            ErrorType::UnsupportedMethod => "Unsupported method",
             ErrorType::MalformedRequest => "Malformed Request",
+            ErrorType::InvalidParameters => "Invalid Parameters",
             _ => "Internal error",
         };
         f.write_str(s)
@@ -45,7 +49,7 @@ impl ResponseError for Error {
                 StatusCode::UNAUTHORIZED
             }
             ErrorType::UnsupportedEndpoint => StatusCode::NOT_FOUND,
-            ErrorType::MalformedRequest => StatusCode::BAD_REQUEST,
+            ErrorType::MalformedRequest | ErrorType::InvalidParameters => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

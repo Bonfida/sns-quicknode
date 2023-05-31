@@ -1,4 +1,4 @@
-use actix_web::{get, web, App, HttpServer, Responder};
+use actix_web::{get, middleware::Logger, web, App, HttpServer, Responder};
 use actix_web_httpauth::extractors::basic::{self, BasicAuth};
 use base64::Engine;
 use config::CONFIG;
@@ -31,6 +31,7 @@ pub async fn main() -> std::io::Result<()> {
         CONFIG.quicknode_username, CONFIG.quicknode_password
     );
     let encoded_credentials = base64::engine::general_purpose::STANDARD.encode(&credential_string);
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
     println!("{encoded_credentials}");
     HttpServer::new(move || {
         let authentication_config = basic::Config::default().realm("Restricted API");
@@ -41,6 +42,7 @@ pub async fn main() -> std::io::Result<()> {
             .service(health)
             .service(provisioning::scope())
             .service(sns::scope())
+            .wrap(Logger::default())
     })
     .bind(("0.0.0.0", 8080))?
     .run()
