@@ -1,5 +1,5 @@
 use crate::{db::DbConnector, sns::get_rpc_client, trace};
-use actix_web::{get, web, HttpRequest};
+use actix_web::{web, HttpRequest};
 use serde::Deserialize;
 use serde_json::Value;
 use sns_sdk::non_blocking::resolve;
@@ -24,7 +24,13 @@ impl Params {
     }
 }
 
-pub fn run(rpc_client: RpcClient, params: Params) {}
+pub async fn run(rpc_client: RpcClient, params: Params) -> Result<Value, crate::Error> {
+    let resolved = resolve::resolve_owner(&rpc_client, &params.domain)
+        .await
+        .map_err(|e| trace!(crate::ErrorType::Generic, e))?;
+    Ok(serde_json::to_value(resolved.to_string())
+        .map_err(|e| trace!(crate::ErrorType::Generic, e)))?
+}
 
 pub async fn route(
     request: HttpRequest,
