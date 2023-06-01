@@ -22,6 +22,7 @@ pub enum ErrorType {
     MissingParameters,
     InvalidDomain,
     DomainNotFound,
+    SolanaRpcError,
 }
 
 #[derive(Debug)]
@@ -42,6 +43,7 @@ impl Display for Error {
             ErrorType::InvalidParameters => "Invalid Parameters",
             ErrorType::MissingParameters => "Missing Parameters",
             ErrorType::InvalidDomain => "Invalid Domain",
+            ErrorType::SolanaRpcError => "Solana Rpc Error",
             _ => "Internal error",
         };
         f.write_str(s)

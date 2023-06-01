@@ -1,11 +1,13 @@
 use std::str::FromStr;
 
-use crate::{trace, ErrorType};
+use crate::{append_trace, trace, ErrorType};
 use serde::Deserialize;
 use serde_json::Value;
 use sns_sdk::non_blocking::resolve;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
+
+use super::get_string_from_value_array;
 
 #[derive(Deserialize)]
 pub struct Params {
@@ -15,12 +17,7 @@ pub struct Params {
 impl Params {
     pub fn deserialize(value: Value) -> Result<Self, crate::Error> {
         if let Some(v) = value.as_array() {
-            let domain_key = v
-                .get(0)
-                .ok_or(trace!(ErrorType::MissingParameters))?
-                .as_str()
-                .ok_or(trace!(ErrorType::InvalidParameters))?
-                .to_owned();
+            let domain_key = get_string_from_value_array(v, 0).map_err(|e| append_trace!(e))?;
             Ok(Self { domain_key })
         } else {
             serde_json::from_value(value).map_err(|e| trace!(ErrorType::InvalidParameters, e))

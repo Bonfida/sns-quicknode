@@ -1,12 +1,16 @@
 use std::str::FromStr;
 
-use crate::{trace, ErrorType};
+use crate::{append_trace, trace, ErrorType};
 use base64::Engine;
 use serde::Deserialize;
 use serde_json::Value;
 use sns_sdk::non_blocking::register::register_domain_name;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
+
+use super::{
+    get_int_from_value_array, get_opt_string_from_value_array, get_string_from_value_array,
+};
 
 #[derive(Deserialize)]
 pub struct Params {
@@ -21,50 +25,14 @@ pub struct Params {
 impl Params {
     pub fn deserialize(value: Value) -> Result<Self, crate::Error> {
         if let Some(v) = value.as_array() {
-            let domain = v
-                .get(0)
-                .ok_or(trace!(ErrorType::MissingParameters))?
-                .as_str()
-                .ok_or(trace!(ErrorType::InvalidParameters))?
-                .to_owned();
-            let buyer = v
-                .get(1)
-                .ok_or(trace!(ErrorType::MissingParameters))?
-                .as_str()
-                .ok_or(trace!(ErrorType::InvalidParameters))?
-                .to_owned();
-            let buyer_token_account = v
-                .get(2)
-                .ok_or(trace!(ErrorType::MissingParameters))?
-                .as_str()
-                .ok_or(trace!(ErrorType::InvalidParameters))?
-                .to_owned();
-            let space = v
-                .get(3)
-                .ok_or(trace!(ErrorType::MissingParameters))?
-                .as_u64()
-                .ok_or(trace!(ErrorType::InvalidParameters))?
-                .to_owned()
-                .try_into()
-                .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
-            let mint = v
-                .get(4)
-                .filter(|n| !n.is_null())
-                .map(|v| {
-                    v.as_str()
-                        .map(|v| v.to_owned())
-                        .ok_or(trace!(ErrorType::InvalidParameters))
-                })
-                .transpose()?;
-            let referrer_key = v
-                .get(5)
-                .filter(|n| !n.is_null())
-                .map(|v| {
-                    v.as_str()
-                        .map(|v| v.to_owned())
-                        .ok_or(trace!(ErrorType::InvalidParameters))
-                })
-                .transpose()?;
+            let domain = get_string_from_value_array(v, 0).map_err(|e| append_trace!(e))?;
+            let buyer = get_string_from_value_array(v, 1).map_err(|e| append_trace!(e))?;
+            let buyer_token_account =
+                get_string_from_value_array(v, 2).map_err(|e| append_trace!(e))?;
+            let space = get_int_from_value_array(v, 3).map_err(|e| append_trace!(e))?;
+            let mint = get_opt_string_from_value_array(v, 4).map_err(|e| append_trace!(e))?;
+            let referrer_key =
+                get_opt_string_from_value_array(v, 5).map_err(|e| append_trace!(e))?;
             Ok(Self {
                 domain,
                 buyer,

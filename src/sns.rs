@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 use actix_web::{
     dev::HttpServiceFactory,
@@ -13,6 +13,7 @@ use solana_client::nonblocking::rpc_client::RpcClient;
 use crate::{db::DbConnector, trace, validate_basic_auth, ErrorType};
 
 pub mod get_all_domains_for_owner;
+pub mod get_domain_data;
 pub mod get_domain_key;
 pub mod get_domain_record_key;
 pub mod get_domain_reverse_key;
@@ -40,6 +41,7 @@ pub enum Method {
     ReverseLookup,
     GetSubdomains,
     GetRegistrationTransaction,
+    GetDomainData,
     #[serde(other)]
     Unsupported,
 }
@@ -98,7 +100,7 @@ pub struct RpcErrorWrapper(Value, crate::Error);
 
 impl Display for RpcErrorWrapper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+        <Value as Display>::fmt(&self.0, f)
     }
 }
 
@@ -175,6 +177,7 @@ pub async fn route(
         Method::GetRegistrationTransaction => {
             get_registration_transaction::process(rpc_client, params).await
         }
+        Method::GetDomainData => get_domain_data::process(rpc_client, params).await,
         Method::Unsupported => {
             return Err((id.clone(), trace!(crate::ErrorType::UnsupportedEndpoint)).into())
         }
@@ -201,4 +204,44 @@ pub async fn get_rpc_client(
     let endpoint_url = provisioning_info.http_url;
     let rpc_client = RpcClient::new(endpoint_url);
     Ok(rpc_client)
+}
+
+fn get_string_from_value_array(array: &[Value], index: usize) -> Result<String, crate::Error> {
+    let res = array
+        .get(index)
+        .ok_or(trace!(ErrorType::MissingParameters))?
+        .as_str()
+        .ok_or(trace!(ErrorType::InvalidParameters))?
+        .to_owned();
+    Ok(res)
+}
+
+fn get_opt_string_from_value_array(
+    array: &[Value],
+    index: usize,
+) -> Result<Option<String>, crate::Error> {
+    let res = array
+        .get(index)
+        .filter(|n| !n.is_null())
+        .map(|v| v.as_str().ok_or(trace!(ErrorType::InvalidParameters)))
+        .transpose()?
+        .map(|v| v.to_owned());
+    Ok(res)
+}
+
+fn get_int_from_value_array<T: TryFrom<u64>>(
+    array: &[Value],
+    index: usize,
+) -> Result<T, crate::Error>
+where
+    <T as TryFrom<u64>>::Error: Debug,
+{
+    let res = array
+        .get(index)
+        .ok_or(trace!(ErrorType::MissingParameters))?
+        .as_u64()
+        .ok_or(trace!(ErrorType::InvalidParameters))?
+        .try_into()
+        .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
+    Ok(res)
 }

@@ -3215,6 +3215,7 @@ dependencies = [
  "sns-sdk",
  "solana-client",
  "solana-sdk",
+ "spl-name-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-postgres",
 ]
 
