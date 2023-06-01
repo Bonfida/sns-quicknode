@@ -5,11 +5,12 @@ use actix_web::{
     http::header::{HeaderValue, CONTENT_TYPE},
     post, web, HttpRequest, ResponseError, Scope,
 };
+use actix_web_httpauth::extractors::basic::BasicAuth;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use solana_client::nonblocking::rpc_client::RpcClient;
 
-use crate::{db::DbConnector, trace, ErrorType};
+use crate::{db::DbConnector, trace, validate_basic_auth, ErrorType};
 
 pub mod get_all_domains_for_owner;
 pub mod get_domain_key;
@@ -146,10 +147,12 @@ impl ResponseError for RpcErrorWrapper {
 #[post("/")]
 pub async fn route(
     request: HttpRequest,
+    basic_auth: BasicAuth,
     message: web::Json<RpcMessage>,
     db: web::Data<DbConnector>,
 ) -> Result<web::Json<RpcResponseOk>, RpcErrorWrapper> {
     message.validate().map_err(|e| (message.id.clone(), e))?;
+    validate_basic_auth(basic_auth).map_err(|e| (message.id.clone(), e))?;
     let RpcMessage {
         params, id, method, ..
     } = message.into_inner();
