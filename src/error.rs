@@ -7,6 +7,7 @@ use actix_web::{
     },
     ResponseError,
 };
+use sns_sdk::error::SnsError;
 
 #[derive(Debug)]
 pub enum ErrorType {
@@ -18,8 +19,9 @@ pub enum ErrorType {
     UnsupportedMethod,
     MalformedRequest,
     InvalidParameters,
+    MissingParameters,
     InvalidDomain,
-    DomainNotFound
+    DomainNotFound,
 }
 
 #[derive(Debug)]
@@ -38,6 +40,7 @@ impl Display for Error {
             ErrorType::UnsupportedMethod => "Unsupported method",
             ErrorType::MalformedRequest => "Malformed Request",
             ErrorType::InvalidParameters => "Invalid Parameters",
+            ErrorType::MissingParameters => "Missing Parameters",
             ErrorType::InvalidDomain => "Invalid Domain",
             _ => "Internal error",
         };
@@ -54,6 +57,7 @@ impl ResponseError for Error {
             ErrorType::UnsupportedEndpoint => StatusCode::NOT_FOUND,
             ErrorType::MalformedRequest
             | ErrorType::InvalidParameters
+            | ErrorType::MissingParameters
             | ErrorType::InvalidDomain => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -67,6 +71,15 @@ impl ResponseError for Error {
             .insert(CONTENT_TYPE, HeaderValue::from_static("text/plain"));
 
         res
+    }
+}
+
+impl From<&SnsError> for ErrorType {
+    fn from(value: &SnsError) -> Self {
+        match value {
+            SnsError::InvalidDomain | SnsError::UnsupportedMint => ErrorType::InvalidParameters,
+            _ => ErrorType::Generic,
+        }
     }
 }
 
