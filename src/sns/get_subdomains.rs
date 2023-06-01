@@ -1,4 +1,4 @@
-use crate::trace;
+use crate::{trace, ErrorType};
 use serde::Deserialize;
 use serde_json::Value;
 use sns_sdk::{derivation, non_blocking::resolve};
@@ -12,9 +12,11 @@ pub struct Params {
 impl Params {
     pub fn deserialize(value: Value) -> Result<Self, crate::Error> {
         if let Some(v) = value.as_array() {
-            let domain = v[0]
+            let domain = v
+                .get(0)
+                .ok_or(trace!(ErrorType::MissingParameters))?
                 .as_str()
-                .ok_or(trace!(crate::ErrorType::InvalidParameters))?
+                .ok_or(trace!(ErrorType::InvalidParameters))?
                 .to_owned();
             Ok(Self { domain })
         } else {
@@ -27,9 +29,9 @@ impl Params {
 pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
     let params = Params::deserialize(params)?;
     let key = derivation::get_domain_key(&params.domain, false)
-        .map_err(|e| trace!(crate::ErrorType::InvalidParameters, e))?;
+        .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
     let subdomains = resolve::get_subdomains(&rpc_client, &key)
         .await
-        .map_err(|e| trace!(crate::ErrorType::Generic, e))?;
-    Ok(serde_json::to_value(subdomains).map_err(|e| trace!(crate::ErrorType::Generic, e)))?
+        .map_err(|e| trace!(ErrorType::Generic, e))?;
+    Ok(serde_json::to_value(subdomains).map_err(|e| trace!(ErrorType::Generic, e)))?
 }

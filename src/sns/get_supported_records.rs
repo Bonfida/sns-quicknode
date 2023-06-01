@@ -1,4 +1,4 @@
-use crate::trace;
+use crate::{trace, ErrorType};
 use serde::Deserialize;
 use serde_json::Value;
 use sns_sdk::record::Record;
@@ -36,5 +36,5 @@ pub async fn process(_rpc_client: RpcClient, _params: Value) -> Result<Value, cr
         Record::Injective.as_str(),
         Record::Backpack.as_str(),
     ];
-    Ok(serde_json::to_value(supported_records).map_err(|e| trace!(crate::ErrorType::Generic, e)))?
+    Ok(serde_json::to_value(supported_records).map_err(|e| trace!(ErrorType::Generic, e)))?
 }

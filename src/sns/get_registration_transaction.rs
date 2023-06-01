@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::trace;
+use crate::{trace, ErrorType};
 use base64::Engine;
 use serde::Deserialize;
 use serde_json::Value;
@@ -23,37 +23,37 @@ impl Params {
         if let Some(v) = value.as_array() {
             let domain = v
                 .get(0)
-                .ok_or(trace!(crate::ErrorType::MissingParameters))?
+                .ok_or(trace!(ErrorType::MissingParameters))?
                 .as_str()
-                .ok_or(trace!(crate::ErrorType::InvalidParameters))?
+                .ok_or(trace!(ErrorType::InvalidParameters))?
                 .to_owned();
             let buyer = v
                 .get(1)
-                .ok_or(trace!(crate::ErrorType::MissingParameters))?
+                .ok_or(trace!(ErrorType::MissingParameters))?
                 .as_str()
-                .ok_or(trace!(crate::ErrorType::InvalidParameters))?
+                .ok_or(trace!(ErrorType::InvalidParameters))?
                 .to_owned();
             let buyer_token_account = v
                 .get(2)
-                .ok_or(trace!(crate::ErrorType::MissingParameters))?
+                .ok_or(trace!(ErrorType::MissingParameters))?
                 .as_str()
-                .ok_or(trace!(crate::ErrorType::InvalidParameters))?
+                .ok_or(trace!(ErrorType::InvalidParameters))?
                 .to_owned();
             let space = v
                 .get(3)
-                .ok_or(trace!(crate::ErrorType::MissingParameters))?
-                .as_str()
-                .ok_or(trace!(crate::ErrorType::InvalidParameters))?
+                .ok_or(trace!(ErrorType::MissingParameters))?
+                .as_u64()
+                .ok_or(trace!(ErrorType::InvalidParameters))?
                 .to_owned()
-                .parse()
-                .map_err(|e| trace!(crate::ErrorType::InvalidParameters, e))?;
+                .try_into()
+                .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
             let mint = v
                 .get(4)
                 .filter(|n| !n.is_null())
                 .map(|v| {
                     v.as_str()
                         .map(|v| v.to_owned())
-                        .ok_or(trace!(crate::ErrorType::InvalidParameters))
+                        .ok_or(trace!(ErrorType::InvalidParameters))
                 })
                 .transpose()?;
             let referrer_key = v
@@ -62,7 +62,7 @@ impl Params {
                 .map(|v| {
                     v.as_str()
                         .map(|v| v.to_owned())
-                        .ok_or(trace!(crate::ErrorType::InvalidParameters))
+                        .ok_or(trace!(ErrorType::InvalidParameters))
                 })
                 .transpose()?;
             Ok(Self {
@@ -74,8 +74,7 @@ impl Params {
                 referrer_key,
             })
         } else {
-            serde_json::from_value(value)
-                .map_err(|e| trace!(crate::ErrorType::InvalidParameters, e))
+            serde_json::from_value(value).map_err(|e| trace!(ErrorType::InvalidParameters, e))
         }
     }
 }
@@ -90,19 +89,18 @@ pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crat
         mint,
         referrer_key,
     } = params;
-    let buyer =
-        Pubkey::from_str(&buyer).map_err(|e| trace!(crate::ErrorType::InvalidParameters, e))?;
+    let buyer = Pubkey::from_str(&buyer).map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
     let buyer_token_account = Pubkey::from_str(&buyer_token_account)
-        .map_err(|e| trace!(crate::ErrorType::InvalidParameters, e))?;
+        .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
 
     let mint = mint
         .map(|k| Pubkey::from_str(&k))
         .transpose()
-        .map_err(|e| trace!(crate::ErrorType::InvalidParameters, e))?;
+        .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
     let referrer_key = referrer_key
         .map(|k| Pubkey::from_str(&k))
         .transpose()
-        .map_err(|e| trace!(crate::ErrorType::InvalidParameters, e))?;
+        .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
     let register_transaction = register_domain_name(
         rpc_client,
         &domain,
@@ -114,9 +112,9 @@ pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crat
     )
     .await
     .map_err(|e| trace!((&e).into(), e))?;
-    let serialized_transaction = bincode::serialize(&register_transaction)
-        .map_err(|e| trace!(crate::ErrorType::Generic, e))?;
+    let serialized_transaction =
+        bincode::serialize(&register_transaction).map_err(|e| trace!(ErrorType::Generic, e))?;
     let encoded_transaction =
         base64::engine::general_purpose::STANDARD.encode(serialized_transaction);
-    serde_json::to_value(encoded_transaction).map_err(|e| trace!(crate::ErrorType::Generic, e))
+    serde_json::to_value(encoded_transaction).map_err(|e| trace!(ErrorType::Generic, e))
 }
