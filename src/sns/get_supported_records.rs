@@ -38,3 +38,37 @@ pub async fn process(_rpc_client: RpcClient, _params: Value) -> Result<Value, cr
     ];
     Ok(serde_json::to_value(supported_records).map_err(|e| trace!(ErrorType::Generic, e)))?
 }
+
+#[cfg(test)]
+#[tokio::test]
+async fn integrated_test_0() {
+    use crate::sns::{Method, RpcMessage, RpcResponseOk, JSON_RPC};
+    let endpoint = std::env::var("TEST_QUICKNODE_ENDPOINT").unwrap();
+    let client = reqwest::Client::new();
+    let message = RpcMessage {
+        jsonrpc: JSON_RPC.to_owned(),
+        method: Method::GetSupportedRecords,
+        params: serde_json::to_value(["bonfida.sol"]).unwrap(),
+        id: serde_json::to_value(42u8).unwrap(),
+    };
+    eprintln!("{}", serde_json::to_string_pretty(&message).unwrap());
+    let post_request = client.post(&endpoint).json(&message).build().unwrap();
+    let response = client.execute(post_request).await.unwrap();
+    eprintln!("{:#?}", response);
+    if response.status().is_success() {
+        let result: RpcResponseOk<String> = response.json().await.unwrap();
+        let value = result
+            .result
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect::<std::collections::HashSet<_>>();
+        assert_eq!(value.len(), 20);
+        eprintln!("{value:?}");
+    } else {
+        let text = response.text().await.unwrap();
+        eprintln!("Error body:\n {text}");
+        panic!()
+    }
+}
