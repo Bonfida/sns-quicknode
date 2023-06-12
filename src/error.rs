@@ -9,6 +9,8 @@ use actix_web::{
 };
 use sns_sdk::error::SnsError;
 
+use crate::matrix::get_matrix_client;
+
 #[derive(Debug)]
 pub enum ErrorType {
     Generic,
@@ -69,6 +71,10 @@ impl ResponseError for Error {
         let mut res = actix_web::HttpResponse::new(self.status_code())
             .set_body(actix_web::body::BoxBody::new(format!("{self}")));
         println!("Error : {self:?}");
+        if !self.status_code().is_client_error() {
+            let matrix_client = get_matrix_client();
+            matrix_client.send_message(format!("Error: {self:#?}"));
+        }
         res.headers_mut()
             .insert(CONTENT_TYPE, HeaderValue::from_static("text/plain"));
 

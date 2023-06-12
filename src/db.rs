@@ -1,7 +1,9 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod};
-use tokio_postgres::{types::Type, NoTls};
+use openssl::ssl::{SslConnector, SslMethod};
+use postgres_openssl::MakeTlsConnector;
+use tokio_postgres::types::Type;
 
 use crate::{config::CONFIG, provisioning::ProvisioningRequest, trace, ErrorType};
 
@@ -17,15 +19,19 @@ impl DbConnector {
         let password = &CONFIG.postgres_password;
         let port = CONFIG.postgres_port;
         let mut config = tokio_postgres::Config::new();
+        let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+        builder.set_ca_file("./certs/aws.pem").unwrap();
+        let connector = MakeTlsConnector::new(builder.build());
         config
-            .user("postgres")
+            .user("dbmasteruser")
+            .dbname("postgres")
             .host(host)
             .password(password)
             .port(port);
         let mgr_config = ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
         };
-        let mgr = Manager::from_config(config, NoTls, mgr_config);
+        let mgr = Manager::from_config(config, connector, mgr_config);
         let pool = Pool::builder(mgr).max_size(16).build().unwrap();
 
         Self { pool }

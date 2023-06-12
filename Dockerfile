@@ -23,5 +23,7 @@ RUN apt-get install -y ca-certificates
 
 FROM base AS runtime
 WORKDIR sns-quicknode
+RUN mkdir certs
+COPY ./certs ./certs
 COPY --from=builder /sns-quicknode/target/release/sns-quicknode /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/sns-quicknode"]

@@ -70,7 +70,7 @@ pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crat
         .transpose()
         .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
     let register_transaction = register_domain_name(
-        rpc_client,
+        &rpc_client,
         &domain,
         space,
         &buyer,

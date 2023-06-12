@@ -1,16 +1,17 @@
-use std::fmt::{Debug, Display};
+use std::{
+    fmt::{Debug, Display},
+    ops::Deref,
+};
 
 use actix_web::{
-    dev::HttpServiceFactory,
     http::header::{HeaderValue, CONTENT_TYPE},
-    post, web, HttpRequest, ResponseError, Scope,
+    post, web, HttpRequest, ResponseError,
 };
-use actix_web_httpauth::extractors::basic::BasicAuth;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use solana_client::nonblocking::rpc_client::RpcClient;
 
-use crate::{db::DbConnector, trace, validate_basic_auth, ErrorType};
+use crate::{db::DbConnector, matrix::get_matrix_client, trace, ErrorType};
 
 pub mod get_all_domains_for_owner;
 pub mod get_domain_data;
@@ -24,14 +25,11 @@ pub mod get_supported_records;
 pub mod resolve_domain;
 pub mod reverse_lookup;
 
-pub fn scope() -> impl HttpServiceFactory {
-    Scope::new("rpc").service(route)
-}
-
 #[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
 #[serde(rename_all = "snake_case")]
 pub enum Method {
-    Resolve,
+    ResolveDomain,
     GetDomainKey,
     GetAllDomainsForOwner,
     GetDomainReverseKey,
@@ -47,6 +45,7 @@ pub enum Method {
 }
 
 #[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
 pub struct RpcMessage {
     pub jsonrpc: String,
     pub method: Method,
@@ -55,8 +54,9 @@ pub struct RpcMessage {
 }
 
 #[derive(Serialize)]
-pub struct RpcResponseOk {
-    pub jsonrpc: &'static str,
+#[cfg_attr(test, derive(Deserialize))]
+pub struct RpcResponseOk<T: Deref<Target = str>> {
+    pub jsonrpc: T,
     pub result: Value,
     pub id: Value,
 }
@@ -126,7 +126,7 @@ impl ResponseError for RpcErrorWrapper {
             }
             _ => JsonRpcError::ServerError,
         };
-        let message = format!("{}", self.0);
+        let message = format!("{}", self.1);
         let body = RpcResponseError {
             error: RpcError {
                 code: error_code as i64,
@@ -135,6 +135,11 @@ impl ResponseError for RpcErrorWrapper {
             jsonrpc: JSON_RPC,
             id: self.0.clone(),
         };
+
+        if !self.status_code().is_client_error() {
+            let matrix_client = get_matrix_client();
+            matrix_client.send_message(format!("Error: {self:#?}"));
+        }
         let mut res = actix_web::HttpResponse::new(self.status_code()).set_body(
             actix_web::body::BoxBody::new(serde_json::to_string(&body).unwrap_or_default()),
         );
@@ -146,15 +151,19 @@ impl ResponseError for RpcErrorWrapper {
     }
 }
 
-#[post("/")]
+#[post("/rpc")]
 pub async fn route(
     request: HttpRequest,
-    basic_auth: BasicAuth,
+    // basic_auth: BasicAuth,
     message: web::Json<RpcMessage>,
+    // message: web::Json<Value>,
     db: web::Data<DbConnector>,
-) -> Result<web::Json<RpcResponseOk>, RpcErrorWrapper> {
+) -> Result<web::Json<RpcResponseOk<&'static str>>, RpcErrorWrapper> {
+    // matrix_client.send_message(format!("{message:?}"));
+    // let message: RpcMessage = serde_json::from_value(message.into_inner())
+    //     .map_err(|e| (Value::Null, trace!(crate::ErrorType::MalformedRequest, e)))?;
     message.validate().map_err(|e| (message.id.clone(), e))?;
-    validate_basic_auth(basic_auth).map_err(|e| (message.id.clone(), e))?;
+    // validate_basic_auth(basic_auth).map_err(|e| (message.id.clone(), e))?;
     let RpcMessage {
         params, id, method, ..
     } = message.into_inner();
@@ -163,7 +172,7 @@ pub async fn route(
         .map_err(|e| (id.clone(), e))?;
 
     let result = match method {
-        Method::Resolve => resolve_domain::process(rpc_client, params).await,
+        Method::ResolveDomain => resolve_domain::process(rpc_client, params).await,
         Method::GetDomainKey => get_domain_key::process(rpc_client, params).await,
         Method::GetAllDomainsForOwner => {
             get_all_domains_for_owner::process(rpc_client, params).await
@@ -196,7 +205,7 @@ pub async fn get_rpc_client(
 ) -> Result<RpcClient, crate::Error> {
     let quicknode_id = request
         .headers()
-        .get("X-QUICKNODE-ID")
+        .get("x-quicknode-id")
         .ok_or(trace!(crate::ErrorType::InvalidAuthentication))?
         .to_str()
         .map_err(|e| trace!(crate::ErrorType::MalformedRequest, e))?;

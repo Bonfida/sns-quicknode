@@ -26,6 +26,36 @@ pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crat
     let params = Params::deserialize(params)?;
     let resolved = resolve::resolve_owner(&rpc_client, &params.domain)
         .await
-        .map_err(|e| trace!(ErrorType::Generic, e))?;
-    Ok(serde_json::to_value(resolved.to_string()).map_err(|e| trace!(ErrorType::Generic, e)))?
+        .map_err(|e| trace!(ErrorType::Generic, e))?
+        .map(|s| s.to_string());
+    Ok(serde_json::to_value(resolved).map_err(|e| trace!(ErrorType::Generic, e)))?
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn integrated_test_0() {
+    use crate::sns::{Method, RpcMessage, RpcResponseOk, JSON_RPC};
+    let endpoint = std::env::var("TEST_QUICKNODE_ENDPOINT").unwrap();
+    let client = reqwest::Client::new();
+    let message = RpcMessage {
+        jsonrpc: JSON_RPC.to_owned(),
+        method: Method::ResolveDomain,
+        params: serde_json::to_value(["bonfida.sol"]).unwrap(),
+        id: serde_json::to_value(42u8).unwrap(),
+    };
+    eprintln!("{}", serde_json::to_string_pretty(&message).unwrap());
+    let post_request = client.post(&endpoint).json(&message).build().unwrap();
+    let response = client.execute(post_request).await.unwrap();
+    eprintln!("{:#?}", response);
+    if response.status().is_success() {
+        // eprintln!("{}", response.text().await.unwrap());
+        // panic!();
+        let result: RpcResponseOk<String> = response.json().await.unwrap();
+        let value = result.result.as_str().unwrap();
+        assert_eq!(value, "HKKp49qGWXd639QsuH7JiLijfVW5UtCVY4s1n2HANwEA");
+    } else {
+        let text = response.text().await.unwrap();
+        eprintln!("Error body:\n {text}");
+        panic!()
+    }
 }

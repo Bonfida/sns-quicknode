@@ -5,10 +5,13 @@ lazy_static::lazy_static! {
 pub struct Config {
     pub quicknode_username: String,
     pub quicknode_password: String,
-    pub port: u32,
+    pub port: u16,
     pub postgres_host: String,
     pub postgres_password: String,
     pub postgres_port: u16,
+    pub home_server_name: Option<String>,
+    pub room_id: Option<String>,
+    pub access_token: Option<String>,
 }
 
 impl Config {
@@ -21,6 +24,9 @@ impl Config {
             postgres_password: std::env::var("POSTGRES_PASSWORD").unwrap(),
             postgres_port: std::env::var("POSTGRES_PORT").unwrap().parse().unwrap(),
             port: std::env::var("BIND_PORT").unwrap().parse().unwrap(),
+            home_server_name: std::env::var("MATRIX_HOME_SERVER_NAME").ok(),
+            room_id: std::env::var("MATRIX_ROOM_ID").ok(),
+            access_token: std::env::var("MATRIX_ACCESS_TOKEN").ok(),
         }
     }
 }
