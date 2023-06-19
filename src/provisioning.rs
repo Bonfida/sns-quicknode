@@ -124,7 +124,7 @@ async fn update(
     db: web::Data<DbConnector>,
 ) -> Result<web::Json<ProvisioniningUpdateResponse>, ProvisioningError> {
     validate_basic_auth(basic_auth)?;
-    db.update_provisioning_request(&request, None).await?;
+    db.update_provisioning_request(&request).await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
         status: ResponseStatus::Success,
     }))
@@ -145,7 +145,7 @@ async fn deactivate(
     // return Err(ProvisioningError(trace!(crate::ErrorType::Generic)));
     let deactivate_at = request.deactivate_at;
     // let deactivate_at = parse_timestamp(&request.deactivate_at).map_err(|e| append_trace!(e))?;
-    db.update_expiry(&request.quicknode_id, deactivate_at)
+    db.deactivate_endpoint(&request.quicknode_id, &request.endpoint_id, deactivate_at)
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
         status: ResponseStatus::Success,
@@ -161,7 +161,7 @@ async fn deprovision(
     validate_basic_auth(basic_auth)?;
     let deprovision_at = request.deprovision_at;
     // let deprovision_at = parse_timestamp(&request.deprovision_at).map_err(|e| append_trace!(e))?;
-    db.update_expiry(&request.quicknode_id, deprovision_at)
+    db.deprovision(&request.quicknode_id, deprovision_at)
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
         status: ResponseStatus::Success,

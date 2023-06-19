@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS provisioning (
     network text,
     plan text,
     expiry_timestamp bigint,
-    CONSTRAINT provisioning_primary_key PRIMARY KEY(quicknode_id)
+    CONSTRAINT provisioning_primary_key PRIMARY KEY(quicknode_id, endpoint_id)
 );
