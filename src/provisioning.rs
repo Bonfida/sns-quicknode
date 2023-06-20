@@ -4,7 +4,7 @@ use actix_web::{delete, get, post, put, web, HttpResponse, Responder, ResponseEr
 use actix_web_httpauth::extractors::basic::BasicAuth;
 use serde::{Deserialize, Serialize};
 
-use crate::{db::DbConnector, validate_basic_auth};
+use crate::{db::DbConnector, matrix::get_matrix_client, validate_basic_auth};
 
 #[get("/test/{quicknode_id}")]
 async fn test(
@@ -89,6 +89,10 @@ impl ResponseError for ProvisioningError {
         let status_code = self.status_code();
         if status_code.is_server_error() {
             eprintln!("Server Error: {:#?}", self.0);
+        }
+        if !self.status_code().is_client_error() {
+            let matrix_client = get_matrix_client();
+            matrix_client.send_message(format!("Error: {self:#?}"));
         }
         HttpResponse::build(self.status_code()).json(ProvisioniningUpdateResponse {
             status: ResponseStatus::Error,
