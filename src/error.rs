@@ -25,6 +25,7 @@ pub enum ErrorType {
     InvalidDomain,
     DomainNotFound,
     SolanaRpcError,
+    ReverseRecordNotFound,
 }
 
 #[derive(Debug)]
@@ -46,6 +47,7 @@ impl Display for Error {
             ErrorType::MissingParameters => "Missing Parameters",
             ErrorType::InvalidDomain => "Invalid Domain",
             ErrorType::SolanaRpcError => "Solana Rpc Error",
+            ErrorType::ReverseRecordNotFound => "Failed to find a reverse record for a domain",
             _ => "Internal error",
         };
         f.write_str(s)

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{append_trace, trace, ErrorType};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sns_sdk::non_blocking::resolve;
 use solana_client::nonblocking::rpc_client::RpcClient;
@@ -12,6 +12,12 @@ use super::get_string_from_value_array;
 #[derive(Deserialize)]
 pub struct Params {
     owner: String,
+}
+
+#[derive(Serialize)]
+pub struct ResultItem {
+    name: String,
+    key: String,
 }
 
 impl Params {
@@ -29,13 +35,21 @@ pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crat
     let params = Params::deserialize(params)?;
     let owner =
         Pubkey::from_str(&params.owner).map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
-    let domains: Vec<String> = resolve::get_domains_owner(&rpc_client, owner)
+    let domain_keys = resolve::get_domains_owner(&rpc_client, owner)
         .await
         .map_err(|e| trace!(ErrorType::Generic, e))?
         .into_iter()
-        .map(|k| k.to_string())
         .collect::<Vec<_>>();
-    Ok(serde_json::to_value(domains).map_err(|e| trace!(ErrorType::Generic, e)))?
+    let reversed = resolve::resolve_reverse_batch(&rpc_client, &domain_keys)
+        .await
+        .map_err(|e| trace!(ErrorType::Generic, e))?;
+    let mut result = Vec::with_capacity(domain_keys.len());
+    for (key, n) in domain_keys.into_iter().zip(reversed.into_iter()) {
+        let name = n.ok_or(trace!(ErrorType::ReverseRecordNotFound))?;
+        let key = key.to_string();
+        result.push(ResultItem { name, key });
+    }
+    Ok(serde_json::to_value(result).map_err(|e| trace!(ErrorType::Generic, e)))?
 }
 
 #[cfg(test)]
