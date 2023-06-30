@@ -10,4 +10,4 @@ echo $IMAGE_ID
 aws lightsail \
 create-container-service-deployment \
 --cli-input-json "$(cat new_deployment_skeleton.json | awk -v image_id=$IMAGE_ID '{gsub ("IMAGE_ID", image_id); print}')" \
---region ap-southeast-1
+--region ap-southeast-1 

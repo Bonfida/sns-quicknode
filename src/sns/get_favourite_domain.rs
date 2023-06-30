@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
 use crate::{append_trace, trace, ErrorType};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sns_sdk::non_blocking::resolve::get_favourite_domain;
+use sns_sdk::non_blocking::resolve;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 
@@ -12,6 +12,12 @@ use super::get_string_from_value_array;
 #[derive(Deserialize)]
 pub struct Params {
     owner: String,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct ResultItem {
+    name: String,
+    key: String,
 }
 
 impl Params {
@@ -30,12 +36,22 @@ pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crat
     let owner =
         Pubkey::from_str(&params.owner).map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
 
-    let favourite_domain = get_favourite_domain(&rpc_client, &owner)
+    let favourite_domain_key = resolve::get_favourite_domain(&rpc_client, &owner)
         .await
-        .map_err(|e| trace!(ErrorType::Generic, e))?
-        .as_ref()
-        .map(<Pubkey as ToString>::to_string);
-    Ok(serde_json::to_value(favourite_domain).map_err(|e| trace!(ErrorType::Generic, e)))?
+        .map_err(|e| trace!(ErrorType::Generic, e))?;
+    let result = if let Some(domain_key) = favourite_domain_key {
+        let name = resolve::resolve_reverse(&rpc_client, &domain_key)
+            .await
+            .map_err(|e| trace!(ErrorType::Generic, e))?
+            .ok_or(trace!(ErrorType::ReverseRecordNotFound))?;
+        Some(ResultItem {
+            name,
+            key: domain_key.to_string(),
+        })
+    } else {
+        None
+    };
+    Ok(serde_json::to_value(result).map_err(|e| trace!(ErrorType::Generic, e)))?
 }
 
 #[cfg(test)]
