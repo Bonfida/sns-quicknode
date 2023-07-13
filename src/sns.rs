@@ -27,18 +27,28 @@ pub mod reverse_lookup;
 
 #[derive(Deserialize)]
 #[cfg_attr(test, derive(Serialize))]
-#[serde(rename_all = "snake_case")]
 pub enum Method {
+    #[serde(rename = "sns_resolveDomain")]
     ResolveDomain,
+    #[serde(rename = "sns_getDomainKey")]
     GetDomainKey,
+    #[serde(rename = "sns_getAllDomainsForOwner")]
     GetAllDomainsForOwner,
+    #[serde(rename = "sns_getDomainReverseKey")]
     GetDomainReverseKey,
+    #[serde(rename = "sns_getDomainRecordKey")]
     GetDomainRecordKey,
+    #[serde(rename = "sns_getFavouriteDomain")]
     GetFavouriteDomain,
+    #[serde(rename = "sns_getSupportedRecords")]
     GetSupportedRecords,
+    #[serde(rename = "sns_reverseLookup")]
     ReverseLookup,
+    #[serde(rename = "sns_getSubdomains")]
     GetSubdomains,
+    #[serde(rename = "sns_getRegistrationTransaction")]
     GetRegistrationTransaction,
+    #[serde(rename = "sns_getDomainData")]
     GetDomainData,
     #[serde(other)]
     Unsupported,
@@ -253,4 +263,10 @@ where
         .try_into()
         .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
     Ok(res)
+}
+
+#[test]
+pub fn method_name_deserialization_test() {
+    let m = serde_json::to_string(&Method::ResolveDomain).unwrap();
+    assert_eq!(m, "\"sns_resolveDomain\"");
 }
