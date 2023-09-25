@@ -153,7 +153,7 @@ impl ResponseError for RpcErrorWrapper {
         let mut res = actix_web::HttpResponse::new(self.status_code()).set_body(
             actix_web::body::BoxBody::new(serde_json::to_string(&body).unwrap_or_default()),
         );
-        println!("Error : {self:?}");
+        log::error!("Error : {self:?}");
         res.headers_mut()
             .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 

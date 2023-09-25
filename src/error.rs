@@ -72,7 +72,7 @@ impl ResponseError for Error {
     fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
         let mut res = actix_web::HttpResponse::new(self.status_code())
             .set_body(actix_web::body::BoxBody::new(format!("{self}")));
-        println!("Error : {self:?}");
+        log::error!("Error : {self:?}");
         if !self.status_code().is_client_error() {
             let matrix_client = get_matrix_client();
             matrix_client.send_message(format!("Error: {self:#?}"));

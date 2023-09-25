@@ -17,7 +17,7 @@ COPY Cargo.toml ./Cargo.toml
 COPY Cargo.lock ./Cargo.lock
 RUN --mount=type=ssh CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build --release
 
-FROM debian:bullseye-slim AS base
+FROM debian:bookworm-slim AS base
 RUN apt-get update
 RUN apt-get install -y ca-certificates
 

@@ -16,7 +16,6 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Self {
-        // dotenv::dotenv().unwrap();
         Self {
             quicknode_username: std::env::var("QUICKNODE_USERNAME").unwrap(),
             quicknode_password: std::env::var("QUICKNODE_PASSWORD").unwrap(),

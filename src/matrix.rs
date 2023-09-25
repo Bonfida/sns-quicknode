@@ -34,7 +34,7 @@ impl MatrixClient {
         if let (Some(home_server_name), Some(room_id), Some(access_token)) =
             (home_server_name, room_id, access_token)
         {
-            println!("Initializing matrix client");
+            log::info!("Initializing matrix client");
             let client =
                 minimal_matrix::matrix::MatrixClient::new(home_server_name, room_id, access_token)
                     .await;
@@ -43,12 +43,12 @@ impl MatrixClient {
                     client: Some(client),
                 },
                 Err(err) => {
-                    eprintln!("Error logging into matrix - {}", err);
+                    log::error!("Error logging into matrix - {}", err);
                     Default::default()
                 }
             }
         } else {
-            println!("No matrix client");
+            log::info!("No matrix client");
             Default::default()
         }
     }
@@ -56,7 +56,7 @@ impl MatrixClient {
         if let Some(c) = &self.client {
             match c.send_message(message) {
                 Ok(_) => (),
-                Err(err) => eprintln!("Failed to send Matrix message: {}", err),
+                Err(err) => log::error!("Failed to send Matrix message: {}", err),
             }
         }
     }

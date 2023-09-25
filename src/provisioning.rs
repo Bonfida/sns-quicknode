@@ -88,7 +88,7 @@ impl ResponseError for ProvisioningError {
     fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
         let status_code = self.status_code();
         if status_code.is_server_error() {
-            eprintln!("Server Error: {:#?}", self.0);
+            log::error!("Server Error: {:#?}", self.0);
         }
         if !self.status_code().is_client_error() {
             let matrix_client = get_matrix_client();
@@ -142,13 +142,9 @@ async fn deactivate(
     db: web::Data<DbConnector>,
 ) -> Result<web::Json<ProvisioniningUpdateResponse>, ProvisioningError> {
     validate_basic_auth(basic_auth)?;
-    // println!(
-    //     "{}",
-    //     serde_json::to_string_pretty(&request).map_err(|e| trace!(crate::ErrorType::Generic, e))?
-    // );
-    // return Err(ProvisioningError(trace!(crate::ErrorType::Generic)));
+
     let deactivate_at = request.deactivate_at;
-    // let deactivate_at = parse_timestamp(&request.deactivate_at).map_err(|e| append_trace!(e))?;
+
     db.deactivate_endpoint(&request.quicknode_id, &request.endpoint_id, deactivate_at)
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
