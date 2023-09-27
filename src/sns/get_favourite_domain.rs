@@ -73,8 +73,6 @@ mod tests {
         let response = client.execute(post_request).await.unwrap();
         eprintln!("{:#?}", response);
         if response.status().is_success() {
-            // eprintln!("{}", response.text().await.unwrap());
-            // panic!();
             let result: RpcResponseOk<String> = response.json().await.unwrap();
             let value = result.result.as_str().unwrap();
             assert_eq!(value, "Crf8hzfthWGbGbLTVCiqRqV5MVnbpHB1L9KQMd6gsinb");

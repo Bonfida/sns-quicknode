@@ -30,7 +30,6 @@ pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crat
     let domain_key = Pubkey::from_str(&params.domain_key)
         .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
 
-    // TODO fix resolve_reverse to return Result<Option<..>, ..>
     let reversed = resolve::resolve_reverse(&rpc_client, &domain_key)
         .await
         .map_err(|e| trace!(ErrorType::DomainNotFound, e))?;
@@ -55,8 +54,6 @@ mod tests {
         let response = client.execute(post_request).await.unwrap();
         eprintln!("{:#?}", response);
         if response.status().is_success() {
-            // eprintln!("{}", response.text().await.unwrap());
-            // panic!();
             let result: RpcResponseOk<String> = response.json().await.unwrap();
             let value = result.result.as_str().unwrap();
             assert_eq!(value, "bonfida");

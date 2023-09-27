@@ -54,7 +54,6 @@ pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crat
 
 #[tokio::test]
 async fn test_0() {
-    // use crate::sns::{Method, RpcMessage, RpcResponseOk, JSON_RPC};
     use std::collections::HashSet;
     let endpoint = std::env::var("TEST_QUICKNODE_ENDPOINT").unwrap();
     let params = serde_json::to_value(["HKKp49qGWXd639QsuH7JiLijfVW5UtCVY4s1n2HANwEA"]).unwrap();
@@ -100,8 +99,6 @@ mod tests {
         let response = client.execute(post_request).await.unwrap();
         eprintln!("{:#?}", response);
         if response.status().is_success() {
-            // let text_result = response.text().await.unwrap();
-            // panic!("{text_result}");
             let result: RpcResponseOk<String> = response.json().await.unwrap();
             eprintln!("{:?}", result.result);
             let value = result

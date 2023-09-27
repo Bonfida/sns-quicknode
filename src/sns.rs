@@ -164,16 +164,11 @@ impl ResponseError for RpcErrorWrapper {
 #[post("/rpc")]
 pub async fn route(
     request: HttpRequest,
-    // basic_auth: BasicAuth,
     message: web::Json<RpcMessage>,
-    // message: web::Json<Value>,
     db: web::Data<DbConnector>,
 ) -> Result<web::Json<RpcResponseOk<&'static str>>, RpcErrorWrapper> {
-    // matrix_client.send_message(format!("{message:?}"));
-    // let message: RpcMessage = serde_json::from_value(message.into_inner())
-    //     .map_err(|e| (Value::Null, trace!(crate::ErrorType::MalformedRequest, e)))?;
     message.validate().map_err(|e| (message.id.clone(), e))?;
-    // validate_basic_auth(basic_auth).map_err(|e| (message.id.clone(), e))?;
+
     let RpcMessage {
         params, id, method, ..
     } = message.into_inner();

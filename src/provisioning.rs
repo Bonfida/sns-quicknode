@@ -35,7 +35,6 @@ pub struct ProvisioningRequest {
 pub struct ProvisioningDeactivateRequest {
     pub quicknode_id: String,
     pub endpoint_id: String,
-    // pub deactivate_at: String,
     pub deactivate_at: i64,
     pub chain: String,
     pub network: String,
@@ -46,7 +45,6 @@ pub struct ProvisioningDeactivateRequest {
 pub struct DeprovisioningRequest {
     pub quicknode_id: String,
     pub endpoint_id: String,
-    // pub deprovision_at: String,
     pub deprovision_at: i64,
 }
 
@@ -138,7 +136,6 @@ async fn update(
 async fn deactivate(
     basic_auth: BasicAuth,
     request: web::Json<ProvisioningDeactivateRequest>,
-    // request: web::Json<Value>,
     db: web::Data<DbConnector>,
 ) -> Result<web::Json<ProvisioniningUpdateResponse>, ProvisioningError> {
     validate_basic_auth(basic_auth)?;
@@ -160,7 +157,6 @@ async fn deprovision(
 ) -> Result<web::Json<ProvisioniningUpdateResponse>, ProvisioningError> {
     validate_basic_auth(basic_auth)?;
     let deprovision_at = request.deprovision_at;
-    // let deprovision_at = parse_timestamp(&request.deprovision_at).map_err(|e| append_trace!(e))?;
     db.deprovision(&request.quicknode_id, deprovision_at)
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
@@ -176,16 +172,3 @@ pub fn scope() -> Scope {
         .service(deactivate)
         .service(deprovision)
 }
-
-// pub fn parse_timestamp(timestamp: &str) -> Result<i64, crate::Error> {
-//     let time = chrono::DateTime::<Utc>::from_str(timestamp)
-//         .map_err(|e| trace!(crate::ErrorType::MalformedRequest, e))?;
-//     Ok(time.timestamp())
-// }
-
-// #[test]
-// fn test_timestamp() {
-//     let t = "2023-05-31T14:41:34+01:00";
-//     let t = parse_timestamp(t).unwrap();
-//     assert_eq!(t, 1685540494);
-// }
