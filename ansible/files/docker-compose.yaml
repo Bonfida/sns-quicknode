@@ -1,0 +1,18 @@
+services:
+  sns-quicknode:
+    depends_on:
+      - "db"
+    env_file: .env
+    restart: always
+    image: sns-quicknode
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+        max-file: "5"
+    ports: 
+      - "8080:8080"
+  db:
+    restart: always
+    image: postgres:latest
+    env_file: pg.env

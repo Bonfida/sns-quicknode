@@ -1,0 +1,1 @@
+SELECT * FROM provisioning WHERE quicknode_id = $1
