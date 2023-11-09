@@ -6,14 +6,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::{db::DbConnector, matrix::get_matrix_client, validate_basic_auth};
 
-#[get("/test/{quicknode_id}")]
+#[get("/test/{quicknode_id}/{endpoint_id}")]
 async fn test(
     basic_auth: BasicAuth,
     quicknode_id: web::Path<String>,
+    endpoint_id: web::Path<String>,
     db: web::Data<DbConnector>,
 ) -> impl Responder {
     validate_basic_auth(basic_auth)?;
-    let record = db.get_provisioning_request(&quicknode_id).await?;
+    let record = db
+        .get_provisioning_request(&quicknode_id, &endpoint_id)
+        .await?;
     Result::<_, crate::Error>::Ok(web::Json(record))
 }
 

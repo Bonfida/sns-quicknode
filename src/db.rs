@@ -191,6 +191,7 @@ impl DbConnector {
     pub async fn get_provisioning_request(
         &self,
         quicknode_id: &str,
+        endpoint_id: &str,
     ) -> Result<ProvisioningRequest, crate::Error> {
         let client = self
             .pool
@@ -198,11 +199,14 @@ impl DbConnector {
             .await
             .map_err(|e| trace!(crate::ErrorType::DbError, e))?;
         let s = client
-            .prepare_typed_cached(include_str!("sql/get_provision.sql"), &[Type::TEXT])
+            .prepare_typed_cached(
+                include_str!("sql/get_provision.sql"),
+                &[Type::TEXT, Type::TEXT],
+            )
             .await
             .map_err(|e| trace!(ErrorType::DbError, e))?;
         let record = client
-            .query(&s, &[&quicknode_id])
+            .query(&s, &[&quicknode_id, &endpoint_id])
             .await
             .map_err(|e| trace!(ErrorType::DbError, e))?
             .pop()

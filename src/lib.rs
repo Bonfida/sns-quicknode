@@ -4,7 +4,7 @@ use config::CONFIG;
 use db::DbConnector;
 pub use error::{Error, ErrorType};
 
-use crate::matrix::{get_matrix_client, init_matrix_client, MatrixClient};
+use crate::matrix::{get_matrix_client, init_matrix_client, MattermostClient};
 
 pub mod config;
 pub mod db;
@@ -64,7 +64,7 @@ pub fn validate_basic_auth(auth: BasicAuth) -> Result<(), crate::Error> {
     }
 }
 
-pub fn log_matrix<C: AsRef<MatrixClient>>(matrix_client: Option<C>, msg: String) {
+pub fn log_matrix<C: AsRef<MattermostClient>>(matrix_client: Option<C>, msg: String) {
     log::error!("{}", msg);
     if let Some(c) = matrix_client.as_ref() {
         c.as_ref().send_message(msg);

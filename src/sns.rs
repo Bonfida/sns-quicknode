@@ -214,7 +214,15 @@ pub async fn get_rpc_client(
         .ok_or(trace!(crate::ErrorType::InvalidAuthentication))?
         .to_str()
         .map_err(|e| trace!(crate::ErrorType::MalformedRequest, e))?;
-    let provisioning_info = db.get_provisioning_request(quicknode_id).await?;
+    let endpoint_id = request
+        .headers()
+        .get("x-instance-id")
+        .ok_or(trace!(crate::ErrorType::InvalidAuthentication))?
+        .to_str()
+        .map_err(|e| trace!(crate::ErrorType::MalformedRequest, e))?;
+    let provisioning_info = db
+        .get_provisioning_request(quicknode_id, endpoint_id)
+        .await?;
     let endpoint_url = provisioning_info.http_url;
     let rpc_client = RpcClient::new(endpoint_url);
     Ok(rpc_client)

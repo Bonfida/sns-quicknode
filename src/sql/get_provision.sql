@@ -1,1 +1,1 @@
-SELECT * FROM provisioning WHERE quicknode_id = $1
+SELECT * FROM provisioning WHERE quicknode_id = $1 AND endpoint_id = $2
