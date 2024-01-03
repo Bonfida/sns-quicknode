@@ -54,6 +54,13 @@ impl Display for Error {
     }
 }
 
+fn should_skip(error_msg: &str) -> bool {
+    if error_msg.contains("HTTP status client error (429 Too Many Requests") {
+        return true;
+    }
+    false
+}
+
 impl ResponseError for Error {
     fn status_code(&self) -> actix_web::http::StatusCode {
         match self.ty {
@@ -75,7 +82,10 @@ impl ResponseError for Error {
         log::error!("Error : {self:?}");
         if !self.status_code().is_client_error() {
             let matrix_client = get_matrix_client();
-            matrix_client.send_message(format!("Error: {self:#?}"));
+            let error_msg = format!("Error: {self:#?}");
+            if !should_skip(&error_msg) {
+                matrix_client.send_message(format!("Error: {self:#?}"));
+            }
         }
         res.headers_mut()
             .insert(CONTENT_TYPE, HeaderValue::from_static("text/plain"));
