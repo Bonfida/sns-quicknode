@@ -55,10 +55,8 @@ impl Display for Error {
 }
 
 fn should_skip(error_msg: &str) -> bool {
-    if error_msg.contains("HTTP status client error (429 Too Many Requests") {
-        return true;
-    }
-    false
+    error_msg.contains("HTTP status client error (429 Too Many Requests)")
+        || error_msg.contains("Status(429)")
 }
 
 impl ResponseError for Error {
