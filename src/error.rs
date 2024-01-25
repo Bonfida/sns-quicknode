@@ -57,6 +57,7 @@ impl Display for Error {
 fn should_skip(error_msg: &str) -> bool {
     error_msg.contains("HTTP status client error (429 Too Many Requests)")
         || error_msg.contains("Status(429)")
+        || error_msg.contains("(401 Unauthorized)")
 }
 
 impl ResponseError for Error {
