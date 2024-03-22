@@ -25,7 +25,7 @@ impl Params {
 
 pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
     let params = Params::deserialize(params)?;
-    let key = derivation::get_domain_key(&params.domain, false)
+    let key = derivation::get_domain_key(&params.domain)
         .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
     let subdomains = resolve::get_subdomains(&rpc_client, &key)
         .await
