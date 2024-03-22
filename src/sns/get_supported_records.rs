@@ -35,6 +35,10 @@ pub async fn process(_rpc_client: RpcClient, _params: Value) -> Result<Value, cr
         Record::Bsc.as_str(),
         Record::Injective.as_str(),
         Record::Backpack.as_str(),
+        Record::A.as_str(),
+        Record::AAAA.as_str(),
+        Record::CNAME.as_str(),
+        Record::TXT.as_str(),
     ];
     Ok(serde_json::to_value(supported_records).map_err(|e| trace!(ErrorType::Generic, e)))?
 }
