@@ -2,17 +2,24 @@ use crate::{append_trace, trace, ErrorType};
 use base64::Engine;
 use serde::Deserialize;
 use serde_json::Value;
-use sns_sdk::derivation::get_domain_key;
+use sns_sdk::{
+    derivation::get_domain_key,
+    record::{Record, RecordVersion},
+};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::program_pack::Pack;
 use spl_name_service::state::NameRecordHeader;
 
-use super::{get_opt_string_from_value_array, get_string_from_value_array};
+use super::{
+    get_opt_int_from_value_array, get_opt_string_from_value_array, get_string_from_value_array,
+};
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Params {
     domain: String,
     record: Option<String>,
+    record_version: Option<u8>,
 }
 
 impl Params {
@@ -20,7 +27,13 @@ impl Params {
         if let Some(v) = value.as_array() {
             let domain = get_string_from_value_array(v, 0).map_err(|e| append_trace!(e))?;
             let record = get_opt_string_from_value_array(v, 1).map_err(|e| append_trace!(e))?;
-            Ok(Self { domain, record })
+            let record_version =
+                get_opt_int_from_value_array(v, 2).map_err(|e| append_trace!(e))?;
+            Ok(Self {
+                domain,
+                record,
+                record_version,
+            })
         } else {
             serde_json::from_value(value).map_err(|e| trace!(ErrorType::InvalidParameters, e))
         }
@@ -29,10 +42,23 @@ impl Params {
 
 pub async fn process(rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
     let params = Params::deserialize(params)?;
-    let Params { domain, record } = params;
+    let Params {
+        domain,
+        record,
+        record_version,
+    } = params;
+    let record_version = match record_version {
+        Some(1) | None => RecordVersion::V1,
+        Some(2) => RecordVersion::V2,
+        _ => return Err(trace!(ErrorType::InvalidRecord)),
+    };
     let domain_key = match record {
-        None => get_domain_key(&domain, false),
-        Some(r) => get_domain_key(&format!("{}.{}", r, domain), true),
+        None => get_domain_key(&domain),
+        Some(r) => {
+            let record =
+                Record::try_from_str(&r).map_err(|e| trace!(ErrorType::InvalidRecord, e))?;
+            sns_sdk::record::get_record_key(&domain, record, record_version)
+        }
     }
     .map_err(|e| trace!(ErrorType::InvalidDomain, e))?;
     let account = rpc_client

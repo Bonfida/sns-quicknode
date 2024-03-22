@@ -26,6 +26,8 @@ pub enum ErrorType {
     DomainNotFound,
     SolanaRpcError,
     ReverseRecordNotFound,
+    InvalidRecord,
+    InvalidRecordVersion,
 }
 
 #[derive(Debug)]
@@ -48,6 +50,8 @@ impl Display for Error {
             ErrorType::InvalidDomain => "Invalid Domain",
             ErrorType::SolanaRpcError => "Solana Rpc Error",
             ErrorType::ReverseRecordNotFound => "Failed to find a reverse record for a domain",
+            ErrorType::InvalidRecord => "The given record type is unsupported",
+            ErrorType::InvalidRecordVersion => "The given record version is unsupported",
             _ => "Internal error",
         };
         f.write_str(s)
@@ -70,7 +74,9 @@ impl ResponseError for Error {
             ErrorType::MalformedRequest
             | ErrorType::InvalidParameters
             | ErrorType::MissingParameters
-            | ErrorType::InvalidDomain => StatusCode::BAD_REQUEST,
+            | ErrorType::InvalidDomain
+            | ErrorType::InvalidRecord
+            | ErrorType::InvalidRecordVersion => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

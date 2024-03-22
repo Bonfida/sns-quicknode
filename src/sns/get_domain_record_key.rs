@@ -1,15 +1,16 @@
 use crate::{append_trace, trace, ErrorType};
 use serde::Deserialize;
 use serde_json::Value;
-use sns_sdk::derivation::get_domain_key;
+use sns_sdk::record::{get_record_key, Record, RecordVersion};
 use solana_client::nonblocking::rpc_client::RpcClient;
 
-use super::get_string_from_value_array;
+use super::{get_opt_int_from_value_array, get_string_from_value_array};
 
 #[derive(Deserialize)]
 pub struct Params {
     domain: String,
     record: String,
+    record_version: Option<u8>,
 }
 
 impl Params {
@@ -17,7 +18,13 @@ impl Params {
         if let Some(v) = value.as_array() {
             let domain = get_string_from_value_array(v, 0).map_err(|e| append_trace!(e))?;
             let record = get_string_from_value_array(v, 1).map_err(|e| append_trace!(e))?;
-            Ok(Self { domain, record })
+            let record_version =
+                get_opt_int_from_value_array(v, 2).map_err(|e| append_trace!(e))?;
+            Ok(Self {
+                domain,
+                record,
+                record_version,
+            })
         } else {
             serde_json::from_value(value).map_err(|e| trace!(ErrorType::InvalidParameters, e))
         }
@@ -26,7 +33,14 @@ impl Params {
 
 pub async fn process(_rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
     let params = Params::deserialize(params)?;
-    let domain_record_key = get_domain_key(&format!("{}.{}", params.record, params.domain), true)
+    let record_version = match params.record_version {
+        Some(1) | None => RecordVersion::V1,
+        Some(2) => RecordVersion::V2,
+        _ => return Err(trace!(ErrorType::InvalidRecord)),
+    };
+    let record =
+        Record::try_from_str(&params.record).map_err(|e| trace!(ErrorType::InvalidRecord, e))?;
+    let domain_record_key = get_record_key(&params.domain, record, record_version)
         .map_err(|e| trace!(ErrorType::InvalidDomain, e))?;
     Ok(serde_json::to_value(domain_record_key.to_string())
         .map_err(|e| trace!(ErrorType::Generic, e)))?

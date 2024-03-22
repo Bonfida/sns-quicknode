@@ -268,6 +268,23 @@ where
     Ok(res)
 }
 
+fn get_opt_int_from_value_array<T: TryFrom<u64>>(
+    array: &[Value],
+    index: usize,
+) -> Result<Option<T>, crate::Error>
+where
+    <T as TryFrom<u64>>::Error: Debug,
+{
+    let res = array
+        .get(index)
+        .map(|v| v.as_u64().ok_or(trace!(ErrorType::InvalidParameters)))
+        .transpose()?
+        .map(|v| v.try_into())
+        .transpose()
+        .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
+    Ok(res)
+}
+
 #[test]
 pub fn method_name_deserialization_test() {
     let m = serde_json::to_string(&Method::ResolveDomain).unwrap();
