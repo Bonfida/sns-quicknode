@@ -1,21 +1,44 @@
+use crate::{append_trace, trace, ErrorType};
+use serde::Deserialize;
 use serde_json::Value;
-use sns_sdk::record::RecordVersion;
+use sns_sdk::record::{get_record_key, Record, RecordVersion};
 use solana_client::nonblocking::rpc_client::RpcClient;
 
-use super::get_domain_record_v2_key;
+use super::get_string_from_value_array;
 
-pub type Params = get_domain_record_v2_key::Params;
+#[derive(Deserialize)]
+pub struct Params {
+    pub domain: String,
+    pub record: String,
+}
+
+impl Params {
+    pub fn deserialize(value: Value) -> Result<Self, crate::Error> {
+        if let Some(v) = value.as_array() {
+            let domain = get_string_from_value_array(v, 0).map_err(|e| append_trace!(e))?;
+            let record = get_string_from_value_array(v, 1).map_err(|e| append_trace!(e))?;
+            Ok(Self { domain, record })
+        } else {
+            serde_json::from_value(value).map_err(|e| trace!(ErrorType::InvalidParameters, e))
+        }
+    }
+}
 
 pub async fn process(_rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
     let params = Params::deserialize(params)?;
-    get_domain_record_v2_key::get_domain_record_key(
-        get_domain_record_v2_key::Params {
-            domain: params.domain,
-            record: params.record,
-        },
-        RecordVersion::V1,
-    )
-    .await
+    get_domain_record_key(params, RecordVersion::V2).await
+}
+
+pub async fn get_domain_record_key(
+    params: Params,
+    record_version: RecordVersion,
+) -> Result<Value, crate::Error> {
+    let record =
+        Record::try_from_str(&params.record).map_err(|e| trace!(ErrorType::InvalidRecord, e))?;
+    let domain_record_key = get_record_key(&params.domain, record, record_version)
+        .map_err(|e| trace!(ErrorType::InvalidDomain, e))?;
+    Ok(serde_json::to_value(domain_record_key.to_string())
+        .map_err(|e| trace!(ErrorType::Generic, e)))?
 }
 
 #[cfg(test)]
