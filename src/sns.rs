@@ -15,8 +15,10 @@ use crate::{db::DbConnector, matrix::get_matrix_client, trace, ErrorType};
 
 pub mod get_all_domains_for_owner;
 pub mod get_domain_data;
+pub mod get_domain_data_v2;
 pub mod get_domain_key;
 pub mod get_domain_record_key;
+pub mod get_domain_record_v2_key;
 pub mod get_domain_reverse_key;
 pub mod get_favourite_domain;
 pub mod get_registration_transaction;
@@ -38,6 +40,8 @@ pub enum Method {
     GetDomainReverseKey,
     #[serde(rename = "sns_getDomainRecordKey")]
     GetDomainRecordKey,
+    #[serde(rename = "sns_getDomainRecordV2Key")]
+    GetDomainRecordV2Key,
     #[serde(rename = "sns_getFavouriteDomain")]
     GetFavouriteDomain,
     #[serde(rename = "sns_getSupportedRecords")]
@@ -50,6 +54,8 @@ pub enum Method {
     GetRegistrationTransaction,
     #[serde(rename = "sns_getDomainData")]
     GetDomainData,
+    #[serde(rename = "sns_getDomainDataV2")]
+    GetDomainDataV2,
     #[serde(other)]
     Unsupported,
 }
@@ -184,6 +190,7 @@ pub async fn route(
         }
         Method::GetDomainReverseKey => get_domain_reverse_key::process(rpc_client, params).await,
         Method::GetDomainRecordKey => get_domain_record_key::process(rpc_client, params).await,
+        Method::GetDomainRecordV2Key => get_domain_record_v2_key::process(rpc_client, params).await,
         Method::GetFavouriteDomain => get_favourite_domain::process(rpc_client, params).await,
         Method::GetSupportedRecords => get_supported_records::process(rpc_client, params).await,
         Method::ReverseLookup => reverse_lookup::process(rpc_client, params).await,
@@ -192,6 +199,7 @@ pub async fn route(
             get_registration_transaction::process(rpc_client, params).await
         }
         Method::GetDomainData => get_domain_data::process(rpc_client, params).await,
+        Method::GetDomainDataV2 => get_domain_data_v2::process(rpc_client, params).await,
         Method::Unsupported => {
             return Err((id.clone(), trace!(crate::ErrorType::UnsupportedEndpoint)).into())
         }
@@ -264,23 +272,6 @@ where
         .as_u64()
         .ok_or(trace!(ErrorType::InvalidParameters))?
         .try_into()
-        .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
-    Ok(res)
-}
-
-fn get_opt_int_from_value_array<T: TryFrom<u64>>(
-    array: &[Value],
-    index: usize,
-) -> Result<Option<T>, crate::Error>
-where
-    <T as TryFrom<u64>>::Error: Debug,
-{
-    let res = array
-        .get(index)
-        .map(|v| v.as_u64().ok_or(trace!(ErrorType::InvalidParameters)))
-        .transpose()?
-        .map(|v| v.try_into())
-        .transpose()
         .map_err(|e| trace!(ErrorType::InvalidParameters, e))?;
     Ok(res)
 }
