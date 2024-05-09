@@ -23,7 +23,7 @@ pub struct Params {
     record: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 #[serde(untagged)]
 pub enum QueryResult {
@@ -102,14 +102,16 @@ pub async fn get_domain_data(
                     return serde_json::to_value(Option::<QueryResult>::None)
                         .map_err(|e| trace!(ErrorType::Generic, e));
                 };
-            let domain_header = NameRecordHeader::unpack_unchecked(&domain_account.data)
-                .map_err(|e| trace!(ErrorType::Generic, e))?;
+
+            let domain_header =
+                NameRecordHeader::unpack_unchecked(&domain_account.data[..NameRecordHeader::LEN])
+                    .map_err(|e| trace!(ErrorType::Generic, e))?;
+
             if record_account.data.len() < NameRecordHeader::LEN + RecordHeader::LEN {
                 return Err(trace!(ErrorType::InvalidRecord));
             }
-            let record_v2_header = sns_records::state::record_header::RecordHeader::from_buffer(
-                &record_account.data[NameRecordHeader::LEN..],
-            );
+            let record_v2_header =
+                sns_records::state::record_header::RecordHeader::from_buffer(&record_account.data);
             let roa_validation =
                 Validation::try_from(record_v2_header.right_of_association_validation)
                     .map_err(|e| trace!(ErrorType::InvalidRecord, e))?;
@@ -131,7 +133,7 @@ pub async fn get_domain_data(
             )?;
             let roa_id = parse_validation_id(&record_account.data[roa_offset..], roa_validation)?;
             let data = sns_sdk::record::record_v2::deserialize_record_v2_content(
-                &domain_account.data[content_offset..],
+                &record_account.data[content_offset..],
                 record,
             )
             .map_err(|e| trace!(ErrorType::InvalidRecord, e))?;
@@ -175,6 +177,8 @@ fn parse_validation(validation: &Validation) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
     #[tokio::test]
     async fn integrated_test_0() {
@@ -204,6 +208,160 @@ mod tests {
             let text = response.text().await.unwrap();
             eprintln!("Error body:\n {text}");
             panic!()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_record_v1() {
+        dotenv::dotenv().ok();
+
+        struct Item {
+            pub record: Record,
+            pub value: String,
+            pub domain: String,
+        }
+        let expected_values: Vec<Item> = vec![
+            Item {
+                record: Record::Ipfs,
+                value: String::from("QmbWqxBEKC3P8tqsKc98xmWNzrzDtRLMiMPL8wBuTGsMnR"),
+                domain: String::from("🍍"),
+            },
+            Item {
+                record: Record::Arwv,
+                value: String::from("some-arweave-hash"),
+                domain: String::from("🍍"),
+            },
+        ];
+
+        for item in expected_values.into_iter() {
+            let endpoint = std::env::var("TEST_QUICKNODE_ENDPOINT").unwrap();
+            let rpc_client = RpcClient::new(endpoint);
+            let res = get_domain_data(
+                rpc_client,
+                Params {
+                    domain: item.domain,
+                    record: Some(item.record.as_str().to_owned()),
+                },
+                RecordVersion::V1,
+            )
+            .await
+            .unwrap();
+            let des = base64::engine::general_purpose::STANDARD
+                .decode(res.as_str().unwrap())
+                .unwrap();
+            let str = String::from_utf8(des).unwrap();
+            let trimmed_str = str.trim_end_matches('\0').to_string();
+            assert_eq!(trimmed_str, item.value)
+        }
+
+        let expected_pubkey =
+            Pubkey::from_str("Hf4daCT4tC2Vy9RCe9q8avT68yAsNJ1dQe6xiQqyGuqZ").unwrap();
+        let endpoint = std::env::var("TEST_QUICKNODE_ENDPOINT").unwrap();
+        let rpc_client = RpcClient::new(endpoint);
+        let res = get_domain_data(
+            rpc_client,
+            Params {
+                domain: String::from("wallet-guide-4"),
+                record: Some(Record::Sol.as_str().to_owned()),
+            },
+            RecordVersion::V1,
+        )
+        .await
+        .unwrap();
+        let des = base64::engine::general_purpose::STANDARD
+            .decode(res.as_str().unwrap())
+            .unwrap();
+        assert_eq!(des[..32], *expected_pubkey.as_ref());
+    }
+
+    #[tokio::test]
+    async fn test_record_v2() {
+        dotenv::dotenv().ok();
+
+        struct Item {
+            pub record: Record,
+            pub value: String,
+            pub domain: String,
+            pub staleness_id: String,
+            pub staleness_validation: String,
+            pub roa_id: String,
+            pub roa_validation: String,
+        }
+        let expected_values: Vec<Item> = vec![
+            Item {
+                record: Record::Ipfs,
+                value: String::from("ipfs://test"),
+                domain: String::from("wallet-guide-9"),
+                staleness_id: String::from("Fxuoy3gFjfJALhwkRcuKjRdechcgffUApeYAfMWck6w8"),
+                staleness_validation: String::from("Solana"),
+                roa_id: String::from(""),
+                roa_validation: String::from("None"),
+            },
+            Item {
+                record: Record::Email,
+                value: String::from("test@gmail.com"),
+                domain: String::from("wallet-guide-9"),
+                staleness_id: String::from(""),
+                staleness_validation: String::from("None"),
+                roa_id: String::from(""),
+                roa_validation: String::from("None"),
+            },
+            Item {
+                record: Record::Url,
+                value: String::from("https://google.com"),
+                domain: String::from("wallet-guide-9"),
+                staleness_id: String::from(""),
+                staleness_validation: String::from("None"),
+                roa_id: String::from(""),
+                roa_validation: String::from("None"),
+            },
+            Item {
+                record: Record::Sol,
+                value: String::from("Hf4daCT4tC2Vy9RCe9q8avT68yAsNJ1dQe6xiQqyGuqZ"),
+                domain: String::from("wallet-guide-6"),
+                staleness_id: String::from("Fxuoy3gFjfJALhwkRcuKjRdechcgffUApeYAfMWck6w8"),
+                staleness_validation: String::from("Solana"),
+                roa_id: String::from("Hf4daCT4tC2Vy9RCe9q8avT68yAsNJ1dQe6xiQqyGuqZ"),
+                roa_validation: String::from("Solana"),
+            },
+        ];
+
+        for item in expected_values.into_iter() {
+            let endpoint = std::env::var("TEST_QUICKNODE_ENDPOINT").unwrap();
+            let rpc_client = RpcClient::new(endpoint);
+            let res = get_domain_data(
+                rpc_client,
+                Params {
+                    domain: item.domain,
+                    record: Some(item.record.as_str().to_owned()),
+                },
+                RecordVersion::V2,
+            )
+            .await
+            .unwrap();
+            let des = serde_json::from_value::<QueryResult>(res).unwrap();
+
+            match des {
+                QueryResult::V1(_) => panic!(),
+                QueryResult::V2 {
+                    current_owner,
+                    content,
+                    staleness_id,
+                    staleness_validation,
+                    roa_id,
+                    roa_validation,
+                } => {
+                    assert_eq!(content, item.value);
+                    assert_eq!(staleness_validation, item.staleness_validation);
+                    assert_eq!(staleness_id, item.staleness_id);
+                    assert_eq!(
+                        current_owner,
+                        "Fxuoy3gFjfJALhwkRcuKjRdechcgffUApeYAfMWck6w8"
+                    );
+                    assert_eq!(roa_id, item.roa_id);
+                    assert_eq!(roa_validation, item.roa_validation)
+                }
+            }
         }
     }
 }
