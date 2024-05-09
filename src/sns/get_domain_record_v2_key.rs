@@ -43,6 +43,7 @@ pub async fn get_domain_record_key(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     #[tokio::test]
     async fn integrated_test_0() {
         use crate::sns::{Method, RpcMessage, RpcResponseOk, JSON_RPC};
@@ -66,6 +67,40 @@ mod tests {
             let text = response.text().await.unwrap();
             eprintln!("Error body:\n {text}");
             panic!()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_derivation() {
+        struct Item {
+            pub params: Params,
+            pub version: RecordVersion,
+            pub expected_result: String,
+        }
+        let items: Vec<Item> = vec![
+            Item {
+                params: Params {
+                    domain: String::from("domain1"),
+                    record: String::from("SOL"),
+                },
+                version: RecordVersion::V1,
+                expected_result: String::from("ATH9akc5pi1PWDB39YY7VCoYzCxmz8XVj23oegSoNSPL"),
+            },
+            Item {
+                params: Params {
+                    domain: String::from("domain1"),
+                    record: String::from("SOL"),
+                },
+                version: RecordVersion::V2,
+                expected_result: String::from("GBrd6Q53eu1T2PiaQAtm92r3DwxmoGvZ2D6xjtVtN1Qt"),
+            },
+        ];
+        for item in items.into_iter() {
+            let res = get_domain_record_key(item.params, item.version)
+                .await
+                .unwrap();
+            let res = res.as_str().unwrap();
+            assert_eq!(res, item.expected_result)
         }
     }
 }
