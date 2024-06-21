@@ -15,7 +15,6 @@ pub async fn process(_rpc_client: RpcClient, params: Value) -> Result<Value, cra
         },
         RecordVersion::V1,
     )
-    .await
 }
 
 #[cfg(test)]

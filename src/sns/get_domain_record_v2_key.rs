@@ -26,10 +26,10 @@ impl Params {
 
 pub async fn process(_rpc_client: RpcClient, params: Value) -> Result<Value, crate::Error> {
     let params = Params::deserialize(params)?;
-    get_domain_record_key(params, RecordVersion::V2).await
+    get_domain_record_key(params, RecordVersion::V2)
 }
 
-pub async fn get_domain_record_key(
+pub fn get_domain_record_key(
     params: Params,
     record_version: RecordVersion,
 ) -> Result<Value, crate::Error> {
@@ -96,9 +96,7 @@ mod tests {
             },
         ];
         for item in items.into_iter() {
-            let res = get_domain_record_key(item.params, item.version)
-                .await
-                .unwrap();
+            let res = get_domain_record_key(item.params, item.version).unwrap();
             let res = res.as_str().unwrap();
             assert_eq!(res, item.expected_result)
         }
