@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM lukemathwalker/cargo-chef:latest AS chef
-WORKDIR sns-quicknode
+WORKDIR /sns-quicknode
 
-FROM chef as planner
+FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
@@ -22,7 +22,7 @@ RUN apt-get update
 RUN apt-get install -y ca-certificates
 
 FROM base AS runtime
-WORKDIR sns-quicknode
+WORKDIR /sns-quicknode
 RUN mkdir certs
 COPY ./certs ./certs
 COPY --from=builder /sns-quicknode/target/release/sns-quicknode /usr/local/bin
