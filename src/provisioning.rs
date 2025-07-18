@@ -50,7 +50,6 @@ pub struct ProvisioningDeactivateRequest {
 #[serde(rename_all = "kebab-case")]
 pub struct DeprovisioningRequest {
     pub quicknode_id: String,
-    pub deprovision_at: i64,
 }
 
 #[derive(Serialize)]
