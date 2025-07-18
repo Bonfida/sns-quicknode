@@ -47,7 +47,6 @@ pub struct ProvisioningDeactivateRequest {
 #[serde(rename_all = "kebab-case")]
 pub struct DeprovisioningRequest {
     pub quicknode_id: String,
-    pub endpoint_id: String,
     pub deprovision_at: i64,
 }
 
@@ -70,7 +69,6 @@ pub struct ProvisioniningResponse {
 #[serde(rename_all = "kebab-case")]
 pub struct ProvisioniningUpdateResponse {
     pub status: ResponseStatus,
-    pub endpoint_id: Option<String>,
 }
 
 #[derive(Debug)]
@@ -98,7 +96,6 @@ impl ResponseError for ProvisioningError {
         }
         HttpResponse::build(self.status_code()).json(ProvisioniningUpdateResponse {
             status: ResponseStatus::Error,
-            endpoint_id: None,
         })
     }
 }
@@ -134,7 +131,6 @@ async fn update(
     db.update_provisioning_request(&request).await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
         status: ResponseStatus::Success,
-        endpoint_id: None,
     }))
 }
 
@@ -152,7 +148,6 @@ async fn deactivate(
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
         status: ResponseStatus::Success,
-        endpoint_id: None,
     }))
 }
 
@@ -168,7 +163,6 @@ async fn deprovision(
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
         status: ResponseStatus::Success,
-        endpoint_id: Some(request.endpoint_id.clone()),
     }))
 }
 
