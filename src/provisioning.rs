@@ -1,10 +1,13 @@
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use actix_web::{delete, get, post, put, web, HttpResponse, Responder, ResponseError, Scope};
 use actix_web_httpauth::extractors::basic::BasicAuth;
 use serde::{Deserialize, Serialize};
 
-use crate::{db::DbConnector, matrix::get_matrix_client, validate_basic_auth};
+use crate::{db::DbConnector, matrix::get_matrix_client, trace, validate_basic_auth, ErrorType};
 
 #[get("/test/{quicknode_id}/{endpoint_id}")]
 async fn test(
@@ -158,7 +161,10 @@ async fn deprovision(
     db: web::Data<DbConnector>,
 ) -> Result<web::Json<ProvisioniningUpdateResponse>, ProvisioningError> {
     validate_basic_auth(basic_auth)?;
-    let deprovision_at = request.deprovision_at;
+    let deprovision_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| trace!(ErrorType::Generic))?
+        .as_secs() as i64;
     db.deprovision(&request.quicknode_id, deprovision_at)
         .await?;
     Ok(web::Json(ProvisioniningUpdateResponse {
